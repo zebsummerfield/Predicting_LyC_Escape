@@ -1,0 +1,44 @@
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+import json
+
+folder = "optimising_model/"
+
+with open(folder+'max_features_optimise_data.json', 'r') as f:
+    data = json.load(f)
+    max_features = np.array(data['max_features'])
+    mean_test_mae = np.array(data['mean_test_mae'])
+    mean_test_mse = np.array(data['mean_test_mse'])
+
+plt.style.use('./MNRAS_Style.mplstyle')
+mpl.rcParams.update({'font.size': 20})
+fig, ax = plt.subplots(figsize=(8, 8))
+
+plot1 = ax.plot(max_features, mean_test_mae, label='Test MAE', color='orange')
+ax.set_xlabel('Maximum Number of Features Considered at Node Splits')
+ax.set_ylabel('Test Set Mean Absolute Error (MAE)')
+ax.set_xlim(1, 15)
+ax.set_ylim(0.44, 0.49)
+
+thresh = ax.axvline(np.sqrt(max(max_features)), linestyle='dashdot', label=f'Square Root Total Features', c='r')
+
+ax.set_box_aspect(1)
+# add grid lines in background of graph
+ax.grid(True, alpha=0.8, linestyle='--')
+ax.set_axisbelow(True)
+for line in ax.get_xgridlines() + ax.get_ygridlines():
+    line.set_zorder(0)  # lower z-order than image
+
+plots = [plot1[0], thresh]
+labels = [p.get_label() for p in plots]
+legend = ax.legend(plots, labels, fontsize=16, loc='upper right', bbox_to_anchor=(0.95, 0.95))
+legend.get_frame().set_edgecolor('black')
+legend.get_frame().set_boxstyle('Square')
+legend.get_frame().set_alpha(1.0)
+
+fig.tight_layout()
+mpl.rcParams['figure.dpi'] = 500
+folder = "final_graph_generation/"
+fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+plt.show()

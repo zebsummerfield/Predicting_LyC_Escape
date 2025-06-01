@@ -1,0 +1,65 @@
+import matplotlib.pyplot as plt
+import matplotlib as mpl
+import numpy as np
+import json
+
+folder = "optimising_model/"
+
+with open(folder+'height_fraction_optimise_data.json', 'r') as f:
+    data = json.load(f)
+    height_fractions = np.array(data['height_fractions'])
+    mean_test_mae = np.array(data['mean_test_mae'])
+    mean_test_mse = np.array(data['mean_test_mse'])
+    mean_max_f_esc_pred = np.array(data['mean_max_f_esc_pred'])
+
+threshold = 5
+change_mae = (mean_test_mae - mean_test_mae[-1]) / mean_test_mae[-1]
+print(change_mae)
+indices_thresh=np.where(change_mae < threshold*0.01)
+print(f"minimum fraction of maximum height of PDF cut where the MAE fractional increase is less than {threshold}%:")
+print(min(height_fractions[indices_thresh]))
+print(f"test MAE at height_fraction = 0.35: {mean_test_mae[indices_thresh][0]}")
+print(f"maximum f_esc prediction at height_fraction = 0.35: {mean_max_f_esc_pred[indices_thresh][0]}")
+print(f"test MAE for no rejection sampling: {mean_test_mae[-1]}")
+print(f"maximum f_esc prediction for no rejection sampling: {mean_max_f_esc_pred[-1]}")
+
+plt.style.use('./MNRAS_Style.mplstyle')
+mpl.rcParams.update({'font.size': 20})
+fig, ax1 = plt.subplots(figsize=(8, 8))
+
+plot1 = ax1.plot(height_fractions, mean_test_mae, label='Test MAE', color='orange')
+ax1.set_xlabel('Fraction The Maximum PDF Value is Decreased to')
+ax1.set_ylabel('Test Set Mean Absolute Error (MAE)')
+ax1.set_xlim(0, 1)
+ax1.set_ylim(0.44, 0.56)
+
+ax2 = ax1.twinx()
+plot2 = ax2.plot(height_fractions, mean_max_f_esc_pred, label='Max $f_\mathrm{esc}$ prediction', color='green')
+ax2.set_ylabel('Maximum $f_\mathrm{esc}$ prediction')
+ax2.set_xlim(0, 1)
+ax2.set_ylim(-0.395, -0.335)
+ax2.set_yticks([-0.34, -0.35, -0.36, -0.37, -0.38, -0.39])
+ax2.set_yticklabels(['-0.31' ,'-0.33', '-0.35', '-0.37', '-0.39', '-0.41'])
+
+thresh = ax1.axvline(height_fractions[indices_thresh[0][0]], linestyle='dashdot', label=f'MAE {threshold}\% threshold', c='r')
+
+ax1.set_box_aspect(1)
+# add grid lines in background of graph
+ax1.grid(True, alpha=0.8, linestyle='--')
+ax1.set_axisbelow(True)
+for line in ax1.get_xgridlines() + ax1.get_ygridlines():
+    line.set_zorder(0)  # lower z-order than image
+ax2.grid(False)
+
+plots = [plot1[0], plot2[0], thresh]
+labels = [p.get_label() for p in plots]
+legend = ax1.legend(plots, labels, fontsize=16, loc='upper right', bbox_to_anchor=(0.95, 0.95))
+legend.get_frame().set_edgecolor('black')
+legend.get_frame().set_boxstyle('Square')
+legend.get_frame().set_alpha(1.0)
+
+fig.tight_layout()
+mpl.rcParams['figure.dpi'] = 500
+folder = "final_graph_generation/"
+fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+plt.show()
