@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from functions import *
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 0
+f_or_n = 1
 
 # True if model is generated to predict for an observational catalogue 
 obvs = False
@@ -19,12 +19,12 @@ y_limits = ((-5, 0), (46, 54))[f_or_n]
 
 f_strs = ['$\Delta\mathrm{MS}_{10}$', '$\mathrm{SFR}_{10}/\mathrm{SFR}_{100}$', '$M_*$',
             '$M_\mathrm{gas}/M_*$', '$M_*/M_\mathrm{vir}$', '$Z$',
-            '$M_\mathrm{UV}$', '$L_\mathrm{UV}/L_\mathrm{H\\alpha}$', '$R_\mathrm{UV}$',
+            '$L_\mathrm{UV}$', '$L_\mathrm{UV}/L_\mathrm{H\\alpha}$', '$R_\mathrm{UV}$',
             '$R_\mathrm{H\\alpha}$', '$R_\mathrm{SFR}$', '$R_\mathrm{SFR}/R_{M_*}$',
             '$\Sigma_\mathrm{SFR_{10}}$', '$1+z$', 'Rand']
 n_strs = ['$\mathrm{SFR}_{10}$', '$\mathrm{SFR}_{100}$', '$M_*$',
           '$M_\mathrm{gas}/M_*$', '$M_*/M_\mathrm{vir}$', '$Z$',
-          '$M_\mathrm{UV}$', '$L_\mathrm{H\\alpha}$', '$1+z$',
+          '$L_\mathrm{UV}$', '$L_\mathrm{H\\alpha}$', '$1+z$',
           'Rand']
 var_strs = [f_strs, n_strs][f_or_n]
 
