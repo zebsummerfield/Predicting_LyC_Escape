@@ -1,6 +1,7 @@
-We present here the code attached to the Cambridge Physics Master's Project: Predicting Ionising Photon Escape During the Epoch of Reionisation. 
+We present the code attached to the Cambridge Physics Master's Project: Predicting Ionising Photon Escape During the Epoch of Reionisation. 
 
 Paper Abstract Excerpt:
+
 Understanding the sources and evolution of cosmic reionisation remains a central challenge in modern astrophysics. Developing
 reliable methods to infer key galaxy properties during the Epoch of Reionisation (EoR) is critical for addressing these questions.
 In this work we use a catalogue of more than 110,000 simulated galaxies from the Thesan-Zoom suite of cosmological radiation-
