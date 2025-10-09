@@ -14,7 +14,7 @@ s = [0.033, 0.067]
 b = [0.041, 0.042]
 u = [2.64, 2.57]
 
-folder = "random_forest_testing/"
+folder = "investigating_indicators/"
 file = 'cat.hdf5'
 
 with h5py.File(file, 'r') as hdf:

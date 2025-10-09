@@ -13,7 +13,7 @@ def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
     )
     return new_cmap
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
 file3 = folder + 'f_esc_rf_observational_test_train.json'

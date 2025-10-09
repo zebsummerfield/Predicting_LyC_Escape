@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib as mpl
 from functions import tableau20
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
 file3 = folder + 'f_esc_rf_observational_test_train.json'

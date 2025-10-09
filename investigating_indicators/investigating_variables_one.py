@@ -44,7 +44,7 @@ with h5py.File(file, 'r') as hdf:
                      1/uv_density, uv_obs/uv_lum])
 
     #variable we are investigating for an f_esc relationship
-    x = star_mass / vir_mass
+    x = ssfr10/ssfr100
 
     # removes any rows that have zero, nan or infinity for the x, ssfr10, f_esc and n_esc
     for i in range(len(np.concatenate(([x], [vars[1]], [f_esc, n_esc])))):

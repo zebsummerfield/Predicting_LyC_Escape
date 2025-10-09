@@ -14,9 +14,9 @@ from astropy.cosmology import Planck15 as cosmo
 f_or_n = 1
 
 # False for plotting total N_esc against redshift and True for plotting mass and magnitude bands
-split_contribution = True
+split_contribution = False
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file3 = folder + 'f_esc_rf_observational_test_train.json'
 file4 = folder + 'n_esc_rf_observational_test_train.json' 
 

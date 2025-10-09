@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error
 import matplotlib as mpl
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
 file3 = folder + 'f_esc_rf_observational_test_train.json'

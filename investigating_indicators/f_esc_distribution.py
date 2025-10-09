@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from scipy import stats
-from investigating_indicators.functions_old import *
+from functions_old import *
 
 folder = "investigating_indicators/"
 file = 'cat.hdf5'
@@ -109,9 +109,10 @@ with h5py.File(file, 'r') as hdf:
     # hist_clipped = np.clip(hist, density_threshold)
 
     # carries out rejection sampling to cap the density of the f_esc distribution
+    height_fraction = 1
     mean = np.mean(log_f_esc)
     std = np.std(log_f_esc)
-    density_threshold = 0.25 * stats.norm.pdf(mean, mean, std)
+    density_threshold = 1 * stats.norm.pdf(mean, mean, std)
     accepted_samples = []
     for i in range(len(log_f_esc)):
         density = stats.norm.pdf(log_f_esc[i], mean, std)

@@ -10,7 +10,7 @@ c = 0
 # if invert == 1 then f_esc is on the x-axis, if invert == -1 then f_esc_predicted is on the x-axis
 invert = -1
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file = folder + 'f_esc_rf_observational_test_train.json'
 with open(file, 'r') as json_data:
     f_data = json.load(json_data)

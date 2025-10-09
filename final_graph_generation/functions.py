@@ -80,7 +80,7 @@ def configure_plots():
     # figure settings
     rcParams['figure.figsize'] = 5, 4
 
-def prepare_data(file, f_or_n=0, obvs=True, eps=True, add_vars=[]):
+def prepare_data(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
     """
     Loads the data from the training catalogue and prepares it for model training
 

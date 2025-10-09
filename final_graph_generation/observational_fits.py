@@ -9,7 +9,7 @@ from scipy.optimize import curve_fit
 import math
 from astropy.cosmology import Planck15 as cosmo
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file3 = folder + 'f_esc_rf_observational_test_train.json'
 file4 = folder + 'n_esc_rf_observational_test_train.json' 
 
