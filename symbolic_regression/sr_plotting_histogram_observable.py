@@ -71,8 +71,8 @@ for axs in axes:
         ax.set_box_aspect(1)
         ax.set_xlim([x_min, x_max])
         ax.set_ylim([x_min, x_max])
-        ax.set_xlabel("$Log_{10}(f_{esc})$ Predicted")
-        ax.set_ylabel("$Log_{10}(f_{esc})$")
+        ax.set_xlabel("$Log_{10}(f_{esc})$")
+        ax.set_ylabel("$Log_{10}(f_{esc})$ Predicted")
         ax.plot((-5, 0), (-5, 0),
             c='black', linewidth=1, alpha=0.5, label='$f_{esc}$ = $f_{esc}$ predicted')
 
