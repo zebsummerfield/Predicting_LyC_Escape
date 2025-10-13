@@ -138,19 +138,25 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
             log_vars = np.concatenate((log_vars, np.log10(add_vars_list).astype('float32')))
         print(keys)
         
-        # removes any rows that have zero ,unity or infinity for the vars and f_esc
+        # removes any rows that have zero ,unity, nan or infinity for the vars and f_esc
         # ssfr50 is included to remove galaxies that have had no recent star formation
         f_esc[np.isnan(f_esc)] = 0
+        bad_indices = []
         for i in range(len(np.concatenate((log_vars, [f_esc], [ssfr50])))):
-            nan_indices = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
-                        if (val == 0 or val == 1 or val == np.inf or val== -np.inf or np.isnan(val))][::-1]
-            print(f"rows deleted: {len(nan_indices)}")
-            f_esc, n_esc = (np.delete(f_esc, nan_indices), np.delete(n_esc, nan_indices))
-            log_vars = np.delete(log_vars, nan_indices, axis=1)
-            ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, nan_indices),
-                                       np.delete(ssfr50, nan_indices),
-                                       np.delete(ssfr100, nan_indices))
-            
+            b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
+                            if (val == 0 or val == 1 or val == np.inf or val== -np.inf or np.isnan(val))]
+            print(f"feature {i+1} bad rows: {len(b_i)}")
+            bad_indices += b_i
+        b_i = [index for index, zoom in enumerate(hdf['zoomlevel_full']) if zoom.decode('utf-8') != 'z4']
+        print(f"zoom level bad rows: {len(b_i)}")
+        bad_indices += b_i
+        bad_indices = list(set(bad_indices))[::-1]
+        f_esc, n_esc = (np.delete(f_esc, bad_indices), np.delete(n_esc, bad_indices))
+        log_vars = np.delete(log_vars, bad_indices, axis=1)
+        ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, bad_indices),
+                                    np.delete(ssfr50, bad_indices),
+                                    np.delete(ssfr100, bad_indices))
+    
         print(f'rows remaining: {len(f_esc)}')
         log_f_esc = np.log10(f_esc).astype('float32')
         log_n_esc = np.log10(n_esc).astype('float32')

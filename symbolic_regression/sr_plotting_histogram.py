@@ -8,12 +8,12 @@ from matplotlib import pyplot as plt
 import json
 import matplotlib.pyplot as plt
 import matplotlib as mpl
-from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_squared_error
 
 folder = "symbolic_regression/"
 
-# if c = 0 then small graphs are plotted, if c = 1 then large graphs are plotted
-c = 0
+# if c = 0 then large graphs are plotted, if c = 1 then small graphs are plotted
+c = 1
 # if invert == 1 then f_esc is on the x-axis, if invert == -1 then f_esc_predicted is on the x-axis
 invert = -1
 
@@ -27,9 +27,9 @@ with open(folder+'f_esc_sr_test_train.json', 'r') as json_data:
 
 print(equation)
 print(f"Train Mean Absolute Error: {mean_absolute_error(train, train_pred)}")
-print(f"Train Mean Squared Error: {mean_squared_error(train, train_pred)}")
+print(f"Train Mean Root Squared Error: {root_mean_squared_error(train, train_pred)}")
 print(f"Test Mean Absolute Error: {mean_absolute_error(test, test_pred)}")
-print(f"Test Mean Squared Error: {mean_squared_error(test, test_pred)}")
+print(f"Test Mean Root Squared Error: {root_mean_squared_error(test, test_pred)}")
 
 mpl.rcParams.update({'font.size': (16, 10)[c]})
 fig, axes = plt.subplots(1, 2, figsize=((16, 8), (12, 6))[c])
@@ -75,7 +75,7 @@ for i in range(1, len(bins)):
     bin_mask = bin_indices == i
     test_X_medians.append(np.median(test_X[bin_mask]))
     test_Y_medians.append(np.median(test_Y[bin_mask]))
-axes[0].plot(test_X_medians, test_Y_medians, c='b', linewidth=2, alpha=0.7, label='median Log_{10}($f_{esc}$)')
+axes[0].plot(test_X_medians, test_Y_medians, c='b', linewidth=2, alpha=0.7, label='median $Log_{10}$($f_{esc}$)')
 axes[0].plot((x_min, x_max), (x_min, x_max),
              c='black', linewidth=2, alpha=0.5, label='$f_{esc}$ = $f_{esc}$ predicted')
 axes[0].legend()

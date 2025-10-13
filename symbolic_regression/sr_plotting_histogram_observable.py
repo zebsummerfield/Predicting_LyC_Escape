@@ -12,8 +12,8 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 
 folder = "symbolic_regression/"
 
-# if c = 0 then small graphs are plotted, if c = 1 then large graphs are plotted
-c = 0
+# if c = 0 then large graphs are plotted, if c = 1 then small graphs are plotted
+c = 1
 
 with open(folder+'f_esc_sr_test_train.json', 'r') as json_data:
     f_data = json.load(json_data)
@@ -33,7 +33,7 @@ print(f"Train Mean Squared Error: {mean_squared_error(f_esc_train, f_esc_train_p
 print(f"Test Mean Absolute Error: {mean_absolute_error(f_esc_test, f_esc_test_pred)}")
 print(f"Test Mean Squared Error: {mean_squared_error(f_esc_test, f_esc_test_pred)}")
 
-mpl.rcParams.update({'font.size': (12, 10)[c]})
+mpl.rcParams.update({'font.size': (12, 7)[c]})
 fig, axes = plt.subplots(3, 5, figsize=((18, 10), (10, 6))[c])
 
 histograms = False
@@ -53,13 +53,13 @@ for i in range(15):
         hist = hist.T # transposes the histogram for proper orientation
         color_hist = axes[y_axis][x_axis].imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], 
                                     origin='lower', aspect='auto', cmap='viridis', interpolation='nearest')
-        plt.colorbar(color_hist, label="$Log_{10}$(" + keys[i] +")", ax=axes[y_axis][x_axis], shrink=(0.7, 0.8)[c])
+        plt.colorbar(color_hist, label="$Log_{10}$(" + keys[i] +")", ax=axes[y_axis][x_axis], shrink=(0.7, 0.5)[c])
 
     
     else:
         # plots a scatter of x against y where the colour and size of the points is determined by f_esc
         color_scatter = axes[y_axis][x_axis].scatter(x, y, c=test_data[:,i], cmap='viridis', marker='.', s=1)
-        plt.colorbar(color_scatter, label="$Log_{10}$(" + keys[i] +")", ax=axes[y_axis][x_axis], shrink=(0.7, 0.8)[c])
+        plt.colorbar(color_scatter, label="$Log_{10}$(" + keys[i] +")", ax=axes[y_axis][x_axis], shrink=(0.7, 0.5)[c])
 
 # set the limits of the x and y axes depending on the data to be plotted
 if np.any(f_esc_test < 0):

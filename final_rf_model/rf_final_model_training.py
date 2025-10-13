@@ -8,16 +8,15 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 import json
 from scipy import stats
 import joblib
-from final_rf_model.functions_old import *
+from functions_old import *
 
 folder = "final_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
-
+f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
-obvs = True
+obvs = False
 
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
@@ -50,7 +49,6 @@ with h5py.File(file, 'r') as hdf:
     # fixing gas mass units
     gas_mass = gas_mass / (0.76 / 1.6735575e-24)
     gas_mass = gas_mass / 1.989e33
-    print(np.mean(uv_lum))
 
     random_variable = np.random.uniform(low=0, high=1, size=(len(f_esc)))
 
@@ -121,18 +119,24 @@ with h5py.File(file, 'r') as hdf:
         log_vars = log_vars[selected_vars]
     print(keys)
     
-    # removes any rows that have zero, unity or infinity for the log_vars and f_esc
+    # removes any rows that have zero ,unity or infinity for the vars and f_esc
     # ssfr50 is included to remove galaxies that have had no recent star formation
     f_esc[np.isnan(f_esc)] = 0
+    bad_indices = []
     for i in range(len(np.concatenate((log_vars, [f_esc], [ssfr50])))):
-        nan_indices = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
-                       if (val == 0 or val == 1 or val == np.inf or val== -np.inf)][::-1]
-        print(f"rows deleted: {len(nan_indices)}")
-        f_esc, n_esc = (np.delete(f_esc, nan_indices), np.delete(n_esc, nan_indices))
-        log_vars = np.delete(log_vars, nan_indices, axis=1)
-        ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, nan_indices), 
-                                   np.delete(ssfr50, nan_indices),
-                                   np.delete(ssfr100, nan_indices))
+        b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
+                        if (val == 0 or val == 1 or val == np.inf or val== -np.inf)]
+        print(f"feature {i+1} bad rows: {len(b_i)}")
+        bad_indices += b_i
+    b_i = [index for index, zoom in enumerate(hdf['zoomlevel_full']) if zoom.decode('utf-8') != 'z4']
+    print(f"zoom level bad rows: {len(b_i)}")
+    bad_indices += b_i
+    bad_indices = list(set(bad_indices))[::-1]
+    f_esc, n_esc = (np.delete(f_esc, bad_indices), np.delete(n_esc, bad_indices))
+    log_vars = np.delete(log_vars, bad_indices, axis=1)
+    ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, bad_indices),
+                                np.delete(ssfr50, bad_indices),
+                                np.delete(ssfr100, bad_indices))
         
     print(f'rows remaining: {len(f_esc)}')
     log_f_esc = np.log10(f_esc).astype('float32')
@@ -157,7 +161,7 @@ for i in range(n):
         X, Y, test_size=0.25, random_state=i)
 
     # carries out rejection sampling to cap the density of the f_esc distribution
-    height_fraction = 0.35
+    height_fraction = 1
     mean = np.mean(y_train)
     std = np.std(y_train)
     density_threshold = height_fraction * stats.norm.pdf(mean, mean, std)
@@ -170,7 +174,6 @@ for i in range(n):
             rejected_samples.append(index)
     x_train = x_train[accepted_samples]
     y_train = y_train[accepted_samples]
-    print(f"Run {i+1}, train size: {len(x_train)}")
         
     # random forest training with the test data
     rf = RandomForestRegressor(n_estimators=140, random_state=i, n_jobs=-1,
@@ -198,6 +201,8 @@ for i in range(n):
                    'f_esc_train_pred': y_train_pred.tolist(),
                    'importances': rf.feature_importances_.tolist()}
         best_rf_index = i
+    
+    print(f"Run {i+1}, train size: {len(x_train)}, MAE: {test_mae_list[i]}, MSE: {test_mse_list[i]}")
 
 print(f"test size: {len(x_test)}")
 print(f"Mean Test Mean Absolute Error: {np.mean(test_mae_list)}")
