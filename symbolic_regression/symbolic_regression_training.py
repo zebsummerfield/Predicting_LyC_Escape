@@ -19,7 +19,7 @@ f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 
-keys, log_vars, Y = prepare_data_sr(file, f_or_n, obvs)
+keys, log_vars, Y, resolution = prepare_data_sr(file, f_or_n, obvs)
 print(keys)
 # nan_indices = [index for index, val in enumerate(Y) if val <=-3 ][::-1]
 # print(f"rows deleted: {len(nan_indices)}")
@@ -29,8 +29,8 @@ X = np.transpose(log_vars)
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
-x_train, x_test, y_train, y_test = train_test_split(
-    X, Y, test_size=0.25, random_state=0)
+x_train, x_test, y_train, y_test, res_train, res_test = train_test_split(
+    X, Y, resolution, test_size=0.25, random_state=0)
 
 # training the symbolic regresion model
 model = PySRRegressor(
@@ -44,7 +44,7 @@ model = PySRRegressor(
     select_k_features=5,
     maxdepth=10,
     batching=True,
-    batch_size=1024,
+    batch_size=4096,
     )
 model.fit(
     x_train,
@@ -73,6 +73,8 @@ sr_data = {'keys': keys.tolist(),
            'f_esc_train_pred': y_train_pred.tolist(),
            'test_data': x_test.tolist(),
            'train_data': x_train.tolist(),
-           'equation': str(model.sympy())}
+           'equation': str(model.sympy()),
+           'res_test': res_test.tolist(),
+           'res_train': res_train.tolist(),}
 with open(folder+'f_esc_sr_test_train.json', 'w') as json_file:
     json.dump(sr_data, json_file)

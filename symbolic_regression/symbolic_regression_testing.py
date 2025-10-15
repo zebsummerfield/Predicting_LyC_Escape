@@ -30,6 +30,8 @@ with open(folder+'f_esc_sr_test_train.json', 'r') as json_data:
     y_test = np.array(f_data['f_esc_test'])
     y_train = np.array(f_data['f_esc_train'])
     keys = f_data['keys']
+    res_test = f_data['res_test']
+    res_train = f_data['res_train']
     
 mse = np.array(model.equations_.loss)[::-1]
 complexity = np.array(model.equations_.complexity)
@@ -64,7 +66,9 @@ sr_data = {'keys': keys,
            'f_esc_train_pred': y_train_pred.tolist(),
            'equation': (str(model.sympy()), str(model.sympy(knee_index)))[save_knee],
            'test_data': x_test.tolist(),
-           'train_data': x_train.tolist()}
+           'train_data': x_train.tolist(),
+           'res_test': res_test,
+           'res_train': res_train}
 with open(folder+'f_esc_sr_test_train.json', 'w') as json_file:
     json.dump(sr_data, json_file)
 

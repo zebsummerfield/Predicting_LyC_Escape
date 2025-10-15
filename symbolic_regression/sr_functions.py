@@ -35,6 +35,7 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         f_esc = np.array(hdf['f_esc_vir_full']).astype('float32')
         n_esc = np.array(hdf['Ndot_LyC_vir_full'])
 
+        resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
         redshift = np.array(hdf['redshift_full'])
         star_mass = np.array(hdf['stellar_mass_full'])
         sfr10 = np.array(hdf['sfr_full_10'])
@@ -60,6 +61,7 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         # fixing gas mass units
         gas_mass = gas_mass / (0.76 / 1.6735575e-24)
         gas_mass = gas_mass / 1.989e33
+        no_gas_indices = [index for index, val in enumerate(gas_mass) if val <= 0]
         
         add_vars_list = []
         for str in add_vars:
@@ -147,21 +149,25 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
                             if (val == 0 or val == 1 or val == np.inf or val== -np.inf or np.isnan(val))]
             print(f"feature {i+1} bad rows: {len(b_i)}")
             bad_indices += b_i
-        b_i = [index for index, zoom in enumerate(hdf['zoomlevel_full']) if zoom.decode('utf-8') != 'z4']
-        print(f"zoom level bad rows: {len(b_i)}")
-        bad_indices += b_i
+        # b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z4']
+        # print(f"zoom level bad rows: {len(b_i)}")
+        # bad_indices += b_i
+        print(f"0 gas mass rows removed: {len(no_gas_indices)}")
+        bad_indices += no_gas_indices
         bad_indices = list(set(bad_indices))[::-1]
         f_esc, n_esc = (np.delete(f_esc, bad_indices), np.delete(n_esc, bad_indices))
         log_vars = np.delete(log_vars, bad_indices, axis=1)
         ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, bad_indices),
                                     np.delete(ssfr50, bad_indices),
                                     np.delete(ssfr100, bad_indices))
-    
+        resolution = np.delete(resolution, bad_indices)
+
+        print(f'rows removed: {len(bad_indices)}')
         print(f'rows remaining: {len(f_esc)}')
         log_f_esc = np.log10(f_esc).astype('float32')
         log_n_esc = np.log10(n_esc).astype('float32')
         print(f"mean f_esc: {np.mean(f_esc)}")
         print(f"mean n_esc: {np.mean(n_esc)}")
     
-    return (keys, log_vars, (log_f_esc, log_n_esc)[f_or_n])
+    return (keys, log_vars, (log_f_esc, log_n_esc)[f_or_n], resolution)
             
