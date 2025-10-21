@@ -14,15 +14,15 @@ folder = "symbolic_regression/"
 
 # if c = 0 then large graphs are plotted, if c = 1 then small graphs are plotted
 c = 1
-# if invert == 1 then f_esc is on the x-axis, if invert == -1 then f_esc_predicted is on the x-axis
+# if invert == 1 then esc is on the x-axis, if invert == -1 then esc_predicted is on the x-axis
 invert = -1
 
-with open(folder+'f_esc_sr_test_train.json', 'r') as json_data:
+with open(folder+'esc_sr_test_train.json', 'r') as json_data:
     f_data = json.load(json_data)
-    test = np.array(f_data['f_esc_test'])
-    train = np.array(f_data['f_esc_train'])
-    test_pred = np.array(f_data['f_esc_test_pred'])
-    train_pred = np.array(f_data['f_esc_train_pred'])
+    test = np.array(f_data['esc_test'])
+    train = np.array(f_data['esc_train'])
+    test_pred = np.array(f_data['esc_test_pred'])
+    train_pred = np.array(f_data['esc_train_pred'])
     equation = f_data['equation']
 
 print(equation)
@@ -45,7 +45,7 @@ for i in range(len(axes)):
 nbins = 100
 x_bins = np.linspace(x_min, x_max, nbins+1)
 
-# If invert == 1 then f_esc is on the x-axis, if invert == -1 then f_esc_predicted is on the x-axis
+# If invert == 1 then esc is on the x-axis, if invert == -1 then esc_predicted is on the x-axis
 test_X, test_Y = [test, test_pred][::invert]
 train_X, train_Y = [train_pred, train][::invert]
 test_X_name, test_Y_name = ["$Log_{10}$($f_{esc}$)", "$Log_{10}$($f_{esc}$ Predicted)"][::invert]

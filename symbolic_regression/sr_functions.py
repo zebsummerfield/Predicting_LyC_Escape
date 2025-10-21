@@ -1,5 +1,6 @@
 import h5py
 import numpy as np
+import sympy as sp
 
 def ssfr_func(sfr, mass):
     return np.array(sfr) / np.array(mass) * 1e9
@@ -143,7 +144,8 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         # removes any rows that have zero ,unity, nan or infinity for the vars and f_esc
         # ssfr50 is included to remove galaxies that have had no recent star formation
         f_esc[np.isnan(f_esc)] = 0
-        bad_indices = []
+        bad_indices = no_gas_indices
+        print(f"0 gas mass rows removed: {len(no_gas_indices)}")
         for i in range(len(np.concatenate((log_vars, [f_esc], [ssfr50])))):
             b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
                             if (val == 0 or val == 1 or val == np.inf or val== -np.inf or np.isnan(val))]
@@ -152,8 +154,6 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         # b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z4']
         # print(f"zoom level bad rows: {len(b_i)}")
         # bad_indices += b_i
-        print(f"0 gas mass rows removed: {len(no_gas_indices)}")
-        bad_indices += no_gas_indices
         bad_indices = list(set(bad_indices))[::-1]
         f_esc, n_esc = (np.delete(f_esc, bad_indices), np.delete(n_esc, bad_indices))
         log_vars = np.delete(log_vars, bad_indices, axis=1)
@@ -170,4 +170,27 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         print(f"mean n_esc: {np.mean(n_esc)}")
     
     return (keys, log_vars, (log_f_esc, log_n_esc)[f_or_n], resolution)
+
+def simplify_model(expr):
+    """
+    Convert a SymPy expression from log10-space variables (x0, x1, etc.)
+    to original physical variables (X0, X1, etc.) and simplify 10**(...) 
+    into a product-of-powers form.
+    """
+    # Find all free symbols in the expression
+    free_symbols = expr.free_symbols
+    subs_dict = {}
+    
+    for sym in free_symbols:
+        name = str(sym)
+        X_sym = sp.symbols(f'X{name[1:]}')  # create corresponding original variable Xn
+        subs_dict[sym] = sp.log(X_sym, 10) # substitute x_n -> log10(X_n)
+    
+    # Substitute log10 variables with original variables
+    expr_original = expr.subs(subs_dict)
+    
+    # Simplify 10**(...) into product-of-powers
+    expr_simplified = sp.simplify(10**expr_original)
+    
+    return expr_simplified
             

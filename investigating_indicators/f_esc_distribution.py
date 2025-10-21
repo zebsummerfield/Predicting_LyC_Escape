@@ -21,6 +21,7 @@ with h5py.File(file, 'r') as hdf:
     n_esc = np.array(hdf['Ndot_LyC_vir_full'])
     print(len(f_esc))
 
+    resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
     star_mass = np.array(hdf['stellar_mass_full'])
     ssfr10 = ssfr_func(hdf['sfr_full_10'], star_mass)
@@ -93,6 +94,7 @@ with h5py.File(file, 'r') as hdf:
         ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, nan_indices), 
                                    np.delete(ssfr50, nan_indices),
                                    np.delete(ssfr100, nan_indices))
+        resolution = np.delete(resolution, nan_indices)
     all_nan_indices = list(set(all_nan_indices))
     print(f'rows remaining: {len(f_esc)}')
 
@@ -108,34 +110,38 @@ with h5py.File(file, 'r') as hdf:
     # binc_centres = 0.5*(bin_edges[1:] + bin_edges[:-1])
     # hist_clipped = np.clip(hist, density_threshold)
 
-    # carries out rejection sampling to cap the density of the f_esc distribution
-    height_fraction = 1
-    mean = np.mean(log_f_esc)
-    std = np.std(log_f_esc)
-    density_threshold = 1 * stats.norm.pdf(mean, mean, std)
-    accepted_samples = []
-    for i in range(len(log_f_esc)):
-        density = stats.norm.pdf(log_f_esc[i], mean, std)
-        if np.random.random() < density_threshold/density:
-            accepted_samples.append(i)
-    print(f"rows after rejection sampling: {len(accepted_samples)}")
+    # # carries out rejection sampling to cap the density of the f_esc distribution
+    # height_fraction = 1
+    # mean = np.mean(log_f_esc)
+    # std = np.std(log_f_esc)
+    # density_threshold = 1 * stats.norm.pdf(mean, mean, std)
+    # accepted_samples = []
+    # for i in range(len(log_f_esc)):
+    #     density = stats.norm.pdf(log_f_esc[i], mean, std)
+    #     if np.random.random() < density_threshold/density:
+    #         accepted_samples.append(i)
+    # print(f"rows after rejection sampling: {len(accepted_samples)}")
+
+    # accepted_samples = np.array([index for index, res in enumerate(resolution) if res == 'z16'])
+
+    accepted_samples = np.array(range(len(log_f_esc)))
     
 mpl.rcParams.update({'font.size': (16, 10)[c]})
 fig, axes = plt.subplots(1, 2, figsize=((16, 8), (12, 6))[c])
 
 # here the distributions of variables in the filtered dataset are plotted in histograms
 range = (-8, 0)
-axes[0].hist(log_f_esc[accepted_samples], density=True, bins=100, alpha=0.7, color='b')
+axes[0].hist(log_f_esc[accepted_samples], bins=100, alpha=0.7, color='b')
 axes[0].set_xlim(range)
 axes[0].set_title('f_esc distribution')
 axes[0].set_xlabel('$Log_{10}$($f_{esc}$)')
-axes[0].set_ylabel('Density')
+axes[0].set_ylabel('Galaxies')
 
 range = (43, 55)
-axes[1].hist(log_n_esc[accepted_samples], density=True, bins=100, alpha=0.7, color='r')
+axes[1].hist(log_n_esc[accepted_samples], bins=100, alpha=0.7, color='r')
 axes[1].set_xlim(range)
-axes[1].set_title('n_esc distribution')
+axes[1].set_title('N_esc distribution')
 axes[1].set_xlabel('$Log_{10}$($N_{esc}$)')
-axes[1].set_ylabel('Density')
+axes[1].set_ylabel('Galaxies')
 
 plt.show()

@@ -10,20 +10,23 @@ from scipy import stats
 import joblib
 from functions_old import *
 
-folder = "final_model/"
+folder = "final_rf_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 0
+f_or_n = 1
 # True if model is generated to predict for an observational catalogue 
-obvs = False
+obvs = True
+obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
 
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
 
     f_esc = np.array(hdf['f_esc_vir_full']).astype('float32')
     n_esc = np.array(hdf['Ndot_LyC_vir_full'])
+    print(hdf.keys())
 
+    resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
     star_mass = np.array(hdf['stellar_mass_full'])
     sfr10 = np.array(hdf['sfr_full_10'])
@@ -44,7 +47,8 @@ with h5py.File(file, 'r') as hdf:
     uv_size = np.array(hdf['uv_size_int_full'])
     uv_projection = np.array(hdf['uv_size_int_2d_full'])
     ha_projection = np.array(hdf['ha_size_int_2d_full'])
-    sfr10 = np.array(hdf['sfr_full_10'])
+    uv_size = uv_projection
+    ha_size = ha_projection
     sfr10_density = sfr10 / (np.pi * sfr_size**2)
     # fixing gas mass units
     gas_mass = gas_mass / (0.76 / 1.6735575e-24)
@@ -52,10 +56,10 @@ with h5py.File(file, 'r') as hdf:
 
     random_variable = np.random.uniform(low=0, high=1, size=(len(f_esc)))
 
-    f_esc_vars = np.array([ssfr10, ssfr100, star_mass, gas_mass, vir_mass, star_met,
+    f_esc_vars = np.array([ssfr10, ssfr100, ssfr100, star_mass, gas_mass, vir_mass, star_met,
                            uv_lum, ha_lum, uv_size, ha_size,
-                           sfr_size, star_size, sfr10_density, (1+redshift), random_variable,])
-    f_esc_keys = np.array(['offset10', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
+                           sfr_size, star_size, sfr10_density, (1+redshift), random_variable])
+    f_esc_keys = np.array(['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
                            'gas_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
                            'sfr_size', 'sfr_size/star_size', 'sfr10_density', '1 + redshift', 'random_variable'])
     n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, 
@@ -77,31 +81,28 @@ with h5py.File(file, 'r') as hdf:
     n_esc_vars = n_esc_vars + eps_array
 
     # post adding epsilon, the variables are changed to match the desired form given by their key
-    f_esc_vars[1] = f_esc_vars[0] / f_esc_vars[1]
-    f_esc_vars[3] = f_esc_vars[3] / f_esc_vars[2]
-    f_esc_vars[4] = f_esc_vars[2] / f_esc_vars[4]
-    f_esc_vars[7] = f_esc_vars[6] / f_esc_vars[7]
-    f_esc_vars[11] = f_esc_vars[10] / f_esc_vars[11]
+    f_esc_vars[2] = f_esc_vars[0] / f_esc_vars[1]
+    f_esc_vars[4] = f_esc_vars[4] / f_esc_vars[3]
+    f_esc_vars[5] = f_esc_vars[3] / f_esc_vars[5]
+    f_esc_vars[8] = f_esc_vars[7] / f_esc_vars[8]
+    f_esc_vars[12] = f_esc_vars[11] / f_esc_vars[12]
     n_esc_vars[3] = n_esc_vars[3] / n_esc_vars[2]
     n_esc_vars[4] = n_esc_vars[2] / n_esc_vars[4]
-
-    # replaces the sizes with 2d projections to match the observational catalogue
-    if obvs:
-        f_esc_vars[8] = uv_projection
-        f_esc_vars[9] = ha_projection
     
     log_f_esc_vars = np.log10(f_esc_vars).astype('float32')
     log_n_esc_vars = np.log10(n_esc_vars).astype('float32')
 
     # replaces ssfr10 with offset from the star forming main sequence over 10Myrs
     log_osfms10 =  log_f_esc_vars[0] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[0], b[0], u[0])
+    #log_osfms100 =  log_f_esc_vars[-1] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[1], b[1], u[1])
     log_f_esc_vars[0] = log_osfms10.astype('float32')
+    #log_f_esc_vars[-1] = log_osfms100.astype('float32')
 
     # replaces the luminosities with magnitudes
     lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
     uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
     ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
-    log_f_esc_vars[6] = uv_mag.astype('float32')
+    log_f_esc_vars[7] = uv_mag.astype('float32')
     log_n_esc_vars[6] = uv_mag.astype('float32')
     log_n_esc_vars[7] = ha_mag.astype('float32')
 
@@ -110,8 +111,12 @@ with h5py.File(file, 'r') as hdf:
     keys = [f_esc_keys, n_esc_keys][f_or_n]
 
     # selects only the variables that are present in the observational catalogue
-    f_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9, 13, 14]
-    n_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9]
+    if obvs_cat == 'lola':
+        f_esc_observational_vars = [0, 1, 2, 3, 7, 8, 9, 10, 14, 15]
+        n_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9]
+    else:
+        f_esc_observational_vars = [0, 1, 2, 3, 7, 14, 15]        
+        n_esc_observational_vars = [0, 1, 2, 6, 8, 9]
     selected_vars = [f_esc_observational_vars, n_esc_observational_vars][f_or_n]
     if obvs:
         keys = keys[selected_vars]
@@ -137,6 +142,7 @@ with h5py.File(file, 'r') as hdf:
     ssfr10, ssfr50, ssfr100 = (np.delete(ssfr10, bad_indices),
                                 np.delete(ssfr50, bad_indices),
                                 np.delete(ssfr100, bad_indices))
+    resolution = np.delete(resolution, bad_indices)
         
     print(f'rows remaining: {len(f_esc)}')
     log_f_esc = np.log10(f_esc).astype('float32')
@@ -149,7 +155,7 @@ with h5py.File(file, 'r') as hdf:
     Y = [log_f_esc, log_n_esc][f_or_n]
 
 # run random forest 1000 times to get an average on importances and errors
-n = 1000
+n = 10
 test_mae_list = np.zeros(n)
 test_mse_list = np.zeros(n)
 train_mae_list = np.zeros(n)
@@ -157,23 +163,23 @@ train_mse_list = np.zeros(n)
 importances_list = np.zeros(shape=(n, len(keys)))
 for i in range(n):
 
-    x_train, x_test, y_train, y_test = train_test_split(
-        X, Y, test_size=0.25, random_state=i)
+    x_train, x_test, y_train, y_test, res_train, res_test = train_test_split(
+        X, Y, resolution, test_size=0.25, random_state=i)
 
-    # carries out rejection sampling to cap the density of the f_esc distribution
-    height_fraction = 1
-    mean = np.mean(y_train)
-    std = np.std(y_train)
-    density_threshold = height_fraction * stats.norm.pdf(mean, mean, std)
-    accepted_samples, rejected_samples = ([], [])
-    for index in range(len(y_train)):
-        density = stats.norm.pdf(y_train[index], mean, std)
-        if np.random.random() < density_threshold/density:
-            accepted_samples.append(index)
-        else:
-            rejected_samples.append(index)
-    x_train = x_train[accepted_samples]
-    y_train = y_train[accepted_samples]
+    # # carries out rejection sampling to cap the density of the f_esc distribution
+    # height_fraction = 1
+    # mean = np.mean(y_train)
+    # std = np.std(y_train)
+    # density_threshold = height_fraction * stats.norm.pdf(mean, mean, std)
+    # accepted_samples, rejected_samples = ([], [])
+    # for index in range(len(y_train)):
+    #     density = stats.norm.pdf(y_train[index], mean, std)
+    #     if np.random.random() < density_threshold/density:
+    #         accepted_samples.append(index)
+    #     else:
+    #         rejected_samples.append(index)
+    # x_train = x_train[accepted_samples]
+    # y_train = y_train[accepted_samples]
         
     # random forest training with the test data
     rf = RandomForestRegressor(n_estimators=140, random_state=i, n_jobs=-1,
@@ -199,7 +205,9 @@ for i in range(n):
                    'f_esc_train': y_train.tolist(), 
                    'f_esc_test_pred': y_test_pred.tolist(), 
                    'f_esc_train_pred': y_train_pred.tolist(),
-                   'importances': rf.feature_importances_.tolist()}
+                   'importances': rf.feature_importances_.tolist(),
+                    'res_train': res_train.tolist(),
+                    'res_test': res_test.tolist()}
         best_rf_index = i
     
     print(f"Run {i+1}, train size: {len(x_train)}, MAE: {test_mae_list[i]}, MSE: {test_mse_list[i]}")
@@ -217,7 +225,7 @@ for index, v in enumerate(keys):
     print(f'{v}: {np.mean(importances_list[:,index])}')
 
 f_or_n_str = ['f_esc', 'n_esc'][f_or_n]
-obvs_str = ['final', 'observational'][obvs]
+obvs_str = ['final', 'observational'][obvs] + ['', f'_{obvs_cat}'][obvs]
 # saves the best rf data to a json file
 with open(folder+f'{f_or_n_str}_rf_{obvs_str}_test_train.json', 'w') as f:
     best_rf_data['std_importances'] = np.std(importances_list, axis=0).tolist()

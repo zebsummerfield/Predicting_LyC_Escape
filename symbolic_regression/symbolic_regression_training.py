@@ -9,7 +9,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 import pickle
 import json
-import matplotlib.pyplot as plt
+import multiprocessing
 
 folder = "symbolic_regression/"
 file = 'cat.hdf5'
@@ -33,18 +33,24 @@ x_train, x_test, y_train, y_test, res_train, res_test = train_test_split(
     X, Y, resolution, test_size=0.25, random_state=0)
 
 # training the symbolic regresion model
+n_cores = multiprocessing.cpu_count()
 model = PySRRegressor(
-    populations=50,
-    niterations=500,
+    populations=100,
+    population_size=100,
+    niterations=100,
     binary_operators=["*", "+", "-", "/"],
     unary_operators=["pow10(x) = 10 ^ x"],
     # unary_operators=["square", "inv", "sqrt", "exp", "log", "abs"],
     extra_sympy_mappings={"pow10": lambda x: 10**x},
     model_selection="accuracy",
     select_k_features=5,
-    maxdepth=10,
+    maxdepth=8,
     batching=True,
     batch_size=4096,
+    procs=n_cores,
+    parallelism='multiprocessing',
+    turbo=True,
+    parsimony=0.001
     )
 model.fit(
     x_train,
@@ -67,14 +73,14 @@ y_test_pred = model.predict(x_test)
 
 # saving the data to a json file
 sr_data = {'keys': keys.tolist(),
-           'f_esc_test': y_test.tolist(), 
-           'f_esc_train': y_train.tolist(), 
-           'f_esc_test_pred': y_test_pred.tolist(), 
-           'f_esc_train_pred': y_train_pred.tolist(),
+           'esc_test': y_test.tolist(), 
+           'esc_train': y_train.tolist(), 
+           'esc_test_pred': y_test_pred.tolist(), 
+           'esc_train_pred': y_train_pred.tolist(),
            'test_data': x_test.tolist(),
            'train_data': x_train.tolist(),
            'equation': str(model.sympy()),
-           'res_test': res_test.tolist(),
-           'res_train': res_train.tolist(),}
-with open(folder+'f_esc_sr_test_train.json', 'w') as json_file:
+           'res_train': res_train.tolist(),
+           'res_test': res_test.tolist()}
+with open(folder+'esc_sr_test_train.json', 'w') as json_file:
     json.dump(sr_data, json_file)
