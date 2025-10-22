@@ -14,7 +14,7 @@ def sfms_func(xdata, s, b, u):
     stellar_mass = 10**xdata[1,:]
     return np.log10(s * (stellar_mass / 1e10)**b * (1 + redshift)**u)
 
-def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
+def prepare_data_sr(file, f_or_n=0, basic=False, obvs=False, obvs_cat='charlotte', eps=True, add_vars=[]):
     """
     Loads the data from the training catalogue and prepares it for model training
 
@@ -24,9 +24,11 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         0 for f_esc, 1 for n_esc
     obvs: bool
         True if model is generated to predict for an observational catalogue
+    obvs_cat: str
+        The name of the observational catalogue being used ('charlotte' or 'lola')
     eps: bool
         True if the variables should be adjusted to avoid log(0) errors
-    ad_vars: list
+    add_vars: list
         A list of additional variables to add to the training data
     """
 
@@ -57,6 +59,8 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         uv_size = np.array(hdf['uv_size_int_full'])
         uv_projection = np.array(hdf['uv_size_int_2d_full'])
         ha_projection = np.array(hdf['ha_size_int_2d_full'])
+        uv_size = uv_projection
+        ha_size = ha_projection
         sfr10 = np.array(hdf['sfr_full_10'])
         sfr10_density = sfr10 / (np.pi * sfr_size**2)
         # fixing gas mass units
@@ -70,16 +74,19 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
 
         random_variable = np.random.uniform(low=0, high=1, size=(len(f_esc)))
 
-        f_esc_vars = np.array([ssfr10, ssfr100, star_mass, gas_mass, vir_mass, star_met,
-                            uv_lum, ha_lum, uv_size, ha_size,
-                            sfr_size, star_size, sfr10_density, (1+redshift), random_variable,])
-        f_esc_keys = np.array(['offset10', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
-                            'gas_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
+        f_esc_vars = np.array([ssfr10, ssfr100, ssfr100, star_mass, gas_mass, vir_mass, star_met, uv_lum, ha_lum,
+                               uv_size, ha_size, sfr_size, star_size, sfr10_density, (1+redshift), random_variable])
+        f_esc_keys = np.array(['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
+                            'star_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
                             'sfr_size', 'sfr_size/star_size', 'sfr10_density', '1 + redshift', 'random_variable'])
-        n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, 
+        n_esc_vars = np.array([sfr10, ssfr100, sfr100, star_mass, gas_mass, vir_mass, star_met, 
                             uv_lum, ha_lum, (1+redshift), random_variable])
-        n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'gas_met', 
+        n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'star_met', 
                             'uv_mag', 'ha_mag', '1 + redshift', 'random_variable'])
+        basic_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, uv_lum, ha_lum,
+                               uv_size, ha_size, sfr_size, star_size, redshift, random_variable])
+        basic_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass', 'vir_mass', 'star_met', 'uv_lum', 'ha_lum',
+                               'uv_size', 'ha_size', 'sfr_size', 'star_size', 'redshift', 'random_variable'])
         
         # adds a small epsilon to the variables to avoid log(0) errors
         if eps:
@@ -94,23 +101,24 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
             for i in range(len(eps_array)):
                 eps_array[i].fill(n_epsilons[i])
             n_esc_vars = n_esc_vars + eps_array
+            b_epsilons = np.array([min([v for v in var if v !=0])*eps_frac for var in basic_vars])
+            eps_array = np.zeros(basic_vars.shape)
+            for i in range(len(eps_array)):
+                eps_array[i].fill(b_epsilons[i])
+            basic_vars = basic_vars + eps_array
 
         # post adding epsilon, the variables are changed to match the desired form given by their key
-        f_esc_vars[1] = f_esc_vars[0] / f_esc_vars[1]
-        f_esc_vars[3] = f_esc_vars[3] / f_esc_vars[2]
-        f_esc_vars[4] = f_esc_vars[2] / f_esc_vars[4]
-        f_esc_vars[7] = f_esc_vars[6] / f_esc_vars[7]
-        f_esc_vars[11] = f_esc_vars[10] / f_esc_vars[11]
+        f_esc_vars[2] = f_esc_vars[0] / f_esc_vars[1]
+        f_esc_vars[4] = f_esc_vars[4] / f_esc_vars[3]
+        f_esc_vars[5] = f_esc_vars[3] / f_esc_vars[5]
+        f_esc_vars[8] = f_esc_vars[7] / f_esc_vars[8]
+        f_esc_vars[12] = f_esc_vars[11] / f_esc_vars[12]
         n_esc_vars[3] = n_esc_vars[3] / n_esc_vars[2]
         n_esc_vars[4] = n_esc_vars[2] / n_esc_vars[4]
-
-        # replaces the sizes with 2d projections to match the observational catalogue
-        if obvs:
-            f_esc_vars[8] = uv_projection
-            f_esc_vars[9] = ha_projection
         
         log_f_esc_vars = np.log10(f_esc_vars).astype('float32')
         log_n_esc_vars = np.log10(n_esc_vars).astype('float32')
+        log_basic_vars = np.log10(basic_vars).astype('float32')
 
         # replaces ssfr10 with offset from the star forming main sequence over 10Myrs
         log_osfms10 =  log_f_esc_vars[0] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[0], b[0], u[0])
@@ -119,26 +127,28 @@ def prepare_data_sr(file, f_or_n=0, obvs=False, eps=True, add_vars=[]):
         lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
         uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
         ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
-        log_f_esc_vars[6] = uv_mag.astype('float32')
+        log_f_esc_vars[7] = uv_mag.astype('float32')
         log_n_esc_vars[6] = uv_mag.astype('float32')
         log_n_esc_vars[7] = ha_mag.astype('float32')
 
-        vars = [f_esc_vars, n_esc_vars][f_or_n]
-        log_vars = [log_f_esc_vars, log_n_esc_vars][f_or_n]
-        keys = [f_esc_keys, n_esc_keys][f_or_n]
-
         # selects only the variables that are present in the observational catalogue
-        f_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9, 13, 14]
-        n_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9]
-        selected_vars = [f_esc_observational_vars, n_esc_observational_vars][f_or_n]
+        if obvs_cat == 'lola':
+            f_esc_observational_vars = [0, 1, 2, 3, 7, 8, 9, 10, 14, 15]
+            n_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9]
+        else:
+            f_esc_observational_vars = [0, 1, 2, 3, 7, 14, 15]        
+            n_esc_observational_vars = [0, 1, 2, 6, 8, 9]
+
+        var_list_index = ((f_or_n), 2)[basic]
+        vars = [f_esc_vars, n_esc_vars, basic_vars][var_list_index]
+        log_vars = [log_f_esc_vars, log_n_esc_vars, log_basic_vars][var_list_index]
+        keys = [f_esc_keys, n_esc_keys, basic_keys][var_list_index]
+        selected_vars = [f_esc_observational_vars, n_esc_observational_vars, [0, 1, 2, 6, 12]][var_list_index]
+
         if obvs:
             keys = keys[selected_vars]
             vars = vars[selected_vars]
             log_vars = log_vars[selected_vars]
-        if add_vars:
-            keys = np.concatenate((keys, add_vars))
-            vars = np.concatenate((vars, add_vars_list))
-            log_vars = np.concatenate((log_vars, np.log10(add_vars_list).astype('float32')))
         print(keys)
         
         # removes any rows that have zero ,unity, nan or infinity for the vars and f_esc

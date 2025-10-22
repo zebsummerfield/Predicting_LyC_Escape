@@ -32,7 +32,7 @@ with open(folder+'esc_sr_test_train.json', 'r') as json_data:
 
 mse = np.array(model.equations_.loss)
 complexity = np.array(model.equations_.complexity)
-window_length =9
+window_length = 9
 polyorder = 2
 curvature_approach = False
 

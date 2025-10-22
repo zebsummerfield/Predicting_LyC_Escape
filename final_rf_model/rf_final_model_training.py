@@ -14,9 +14,9 @@ folder = "final_rf_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
+f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
-obvs = True
+obvs = False
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
 
 # loads both the catalogue of galaxies and their variables
@@ -24,7 +24,6 @@ with h5py.File(file, 'r') as hdf:
 
     f_esc = np.array(hdf['f_esc_vir_full']).astype('float32')
     n_esc = np.array(hdf['Ndot_LyC_vir_full'])
-    print(hdf.keys())
 
     resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
@@ -60,11 +59,11 @@ with h5py.File(file, 'r') as hdf:
                            uv_lum, ha_lum, uv_size, ha_size,
                            sfr_size, star_size, sfr10_density, (1+redshift), random_variable])
     f_esc_keys = np.array(['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
-                           'gas_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
+                           'star_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
                            'sfr_size', 'sfr_size/star_size', 'sfr10_density', '1 + redshift', 'random_variable'])
     n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, 
                            uv_lum, ha_lum, (1+redshift), random_variable])
-    n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'gas_met', 
+    n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'star_met', 
                            'uv_mag', 'ha_mag', '1 + redshift', 'random_variable'])
     
     # adds a small epsilon to the variables to avoid log(0) errors

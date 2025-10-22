@@ -17,9 +17,9 @@ file = 'cat.hdf5'
 # 0 for f_esc, 1 for n_esc
 f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
-obvs = False
+obvs = True
 
-keys, log_vars, Y, resolution = prepare_data_sr(file, f_or_n, obvs)
+keys, log_vars, Y, resolution = prepare_data_sr(file, f_or_n=f_or_n, basic=False, obvs=obvs)
 print(keys)
 # nan_indices = [index for index, val in enumerate(Y) if val <=-3 ][::-1]
 # print(f"rows deleted: {len(nan_indices)}")
@@ -44,13 +44,17 @@ model = PySRRegressor(
     extra_sympy_mappings={"pow10": lambda x: 10**x},
     model_selection="accuracy",
     select_k_features=5,
-    maxdepth=8,
+    maxdepth=5,
     batching=True,
     batch_size=4096,
     procs=n_cores,
     parallelism='multiprocessing',
     turbo=True,
-    parsimony=0.001
+    # parsimony punishes complexity in the score function
+    parsimony=0.001,
+    adaptive_parsimony_scaling=1000,
+    warmup_maxsize_by=0.25,
+    use_frequency=True,
     )
 model.fit(
     x_train,
