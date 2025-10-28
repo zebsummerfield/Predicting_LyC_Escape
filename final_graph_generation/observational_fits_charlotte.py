@@ -144,12 +144,14 @@ for i_1 in range(len(axes)):
         error_bars = axes[i_2][i_1].errorbar(x, y,
                                              xerr=(x_err_low, x_err_high),
                                              yerr=y_err,
-                                             fmt='none', ecolor=(0.7, 0.7, 0.7, 0.7),
-                                             elinewidth=0.5, zorder=2)
+                                             fmt='none', ecolor=(0.8, 0.8, 0.8, 0.8),
+                                             elinewidth=0.4, zorder=2)
         z = obvs_redshift
         sorted_indices = np.argsort(z)
         scatter = axes[i_2][i_1].scatter(x[sorted_indices], y[sorted_indices], alpha=0.9,
-                                         c=z[sorted_indices], cmap='inferno', s=5, vmin=3, vmax=10, zorder=3)
+                                         c=z[sorted_indices], cmap='inferno', s=5, zorder=3,
+                                         #vmin=3, vmax=10
+                                         )
 
         y_range = ([-3.5, -0.5], [48, 54])[i_2]
         axes[i_2][i_1].set_ylabel(f_or_n_str)
@@ -188,7 +190,6 @@ for i_1 in range(len(axes)):
 
             x_fit = np.linspace(x_range[0], x_range[1], 100)
             y_fit = linear_1var((a, b), x_fit)
-            print('1')
 
         # plot the best fit line
         fit = axes[i_2][i_1].plot(x_fit, y_fit, c='teal', alpha=0.8, zorder=4)
@@ -222,4 +223,5 @@ cbar.set_label("$z$")
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
+fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
 plt.show()

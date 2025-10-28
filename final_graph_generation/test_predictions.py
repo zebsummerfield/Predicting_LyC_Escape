@@ -1,7 +1,7 @@
 import json
 import matplotlib.pyplot as plt
 import numpy as np
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib as mpl
 from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -16,11 +16,11 @@ def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
 folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
-file3 = folder + 'f_esc_rf_observational_test_train.json'
-file4 = folder + 'n_esc_rf_observational_test_train.json' 
+file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
+file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
 
 # True if model is generated to predict for an observational catalogue 
-obvs = True
+obvs = False
 
 # True if histogram bin colour is logarithmic
 log = False
@@ -34,14 +34,17 @@ with open((file1, file3)[obvs], 'r') as json_data:
 
     # calculate errors on the test and train data
     f_test_mae = mean_absolute_error(f_test, f_test_pred)
-    f_test_mse = root_mean_squared_error(f_test, f_test_pred)
+    f_test_mse = mean_squared_error(f_test, f_test_pred)
     print(f"f_esc Test Mean Absolute Error: {f_test_mae}")
     print(f"f_esc Test Mean Squared Error: {f_test_mse}")
     f_train_mae = mean_absolute_error(f_train, f_train_pred)
-    f_train_mse = root_mean_squared_error(f_train, f_train_pred)
+    f_train_mse = mean_squared_error(f_train, f_train_pred)
     print(f"f_esc Train Mean Absolute Error: {f_train_mae}")
     print(f"f_esc Train Mean Squared Error: {f_train_mse}")
-
+    f_test_r = np.corrcoef(f_test, f_test_pred)[0, 1]
+    f_train_r = np.corrcoef(f_train, f_train_pred)[0, 1]
+    print(f"f_esc Test Correlation Coefficient: {f_test_r}")
+    print(f"f_esc Train Correlation Coefficient: {f_train_r}")
     print(f"Maximum f_esc Test Prediction: {max(f_test_pred)}")
     print(f"Minimum f_esc Test Prediction: {min(f_test_pred)}")
 
@@ -54,14 +57,17 @@ with open((file2, file4)[obvs], 'r') as json_data:
 
     # calculate errors on the test and train data
     n_test_mae = mean_absolute_error(n_test, n_test_pred)
-    n_test_mse = root_mean_squared_error(n_test, n_test_pred)
+    n_test_mse = mean_squared_error(n_test, n_test_pred)
     print(f"n_esc Test Mean Absolute Error: {n_test_mae}")
     print(f"n_esc Test Mean Squared Error: {n_test_mse}")
     n_train_mae = mean_absolute_error(n_train, n_train_pred)
-    n_train_mse = root_mean_squared_error(n_train, n_train_pred)
+    n_train_mse = mean_squared_error(n_train, n_train_pred)
     print(f"n_esc Train Mean Absolute Error: {n_train_mae}")
     print(f"n_esc Train Mean Squared Error: {n_train_mse}")
-
+    n_test_r = np.corrcoef(n_test, n_test_pred)[0, 1]
+    n_train_r = np.corrcoef(n_train, n_train_pred)[0, 1]
+    print(f"n_esc Test Correlation Coefficient: {n_test_r}")
+    print(f"n_esc Train Correlation Coefficient: {n_train_r}")
     print(f"Maximum n_esc Test Prediction: {max(n_test_pred)}")
     print(f"Minimum n_esc Test Prediction: {min(n_test_pred)}")
 
@@ -78,9 +84,9 @@ axes = np.array([[ax1, ax2], [ax3, ax4]])
 hists = []
 
 f_esc_str = "$\mathrm{Log}_{10}(f_\mathrm{esc})$"
-f_esc_pred_str = "$\mathrm{Log}_{10}(f_\mathrm{esc} \; \mathrm{Predicted})$"
+f_esc_pred_str = "$\mathrm{Log}_{10}(f_\mathrm{esc})$ Predicted"
 n_esc_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$"
-n_esc_pred_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; \mathrm{Predicted})$"
+n_esc_pred_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$ Predicted"
 
 for ax_i in range(len(axes)):
     target_str = [f_esc_str, n_esc_str][ax_i]
@@ -118,7 +124,7 @@ for ax_i in range(len(axes)):
 
     # seperates the galaxies into bins of predicted test target with each containing equal numbers of galaxies, 
     # then plots the median of predicted test target against the median of test target for each bin
-    nbins = 30
+    nbins = 25
     bins = np.quantile(test_pred, np.linspace(0, 1, nbins + 1))
     bin_indices = np.digitize(test_pred, bins)
     test_pred_medians = np.zeros(nbins) 
@@ -130,18 +136,18 @@ for ax_i in range(len(axes)):
         test_pred_medians[i-1] = np.median(test_pred[bin_mask])
         test_medians[i-1] = np.median(test[bin_mask])
         test_pred_mae[i-1] = mean_absolute_error(test[bin_mask], test_pred[bin_mask])
-        test_pred_mse[i-1] = root_mean_squared_error(test[bin_mask], test_pred[bin_mask])
-    axes[0, ax_i].plot(test_pred_medians, test_medians, c='r', linewidth=2.5, alpha=0.8, zorder=2)
-    #axes[ax_i].plot(test_pred_medians, test_medians + test_pred_mae, c='b', linewidth=2.5, alpha=0.8, zorder=2)
-    #axes[ax_i].plot(test_pred_medians, test_medians - test_pred_mae, c='b', linewidth=2.5, alpha=0.8, zorder=2)
+        test_pred_mse[i-1] = mean_squared_error(test[bin_mask], test_pred[bin_mask])
+    axes[0, ax_i].plot(test_pred_medians, test_medians, c='r', linewidth=2, alpha=0.8, zorder=3)
+    # axes[0, ax_i].fill_between(test_pred_medians, test_medians - test_pred_mae, test_medians + test_pred_mae,
+    #                            color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
 
     # plots the line of y = x
-    axes[0, ax_i].plot((x_min, x_max), (x_min, x_max), c='black', linewidth=1.5, alpha=0.6, zorder=3)
+    axes[0, ax_i].plot((x_min, x_max), (x_min, x_max), c='black', linewidth=1.5, alpha=0.6, zorder=2)
 
     purple_max = mpl.colormaps['Purples'](1.0)
     green_max = mpl.colormaps['Greens'](1.0)
-    axes[1, ax_i].plot(test_pred_medians, test_pred_mae, c=(purple_max, green_max)[ax_i], linewidth=3, alpha=0.9)
-    axes[1, ax_i].set_ylim(0.275, 0.675)
+    axes[1, ax_i].plot(test_pred_medians, test_pred_mae, c=(purple_max, green_max)[ax_i], linewidth=2.5, alpha=0.9)
+    axes[1, ax_i].set_ylim(0.260, 0.660)
     axes[1, ax_i].set_xlabel(target_pred_str)
     axes[1, ax_i].set_ylabel('MAE [dex]')
     axes[1, ax_i].yaxis.set_label_coords(-0.10, 0.5)

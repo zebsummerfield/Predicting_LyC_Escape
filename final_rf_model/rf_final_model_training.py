@@ -14,7 +14,7 @@ folder = "final_rf_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 0
+f_or_n = 1
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
@@ -64,7 +64,7 @@ with h5py.File(file, 'r') as hdf:
     n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, 
                            uv_lum, ha_lum, (1+redshift), random_variable])
     n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'star_met', 
-                           'uv_mag', 'ha_mag', '1 + redshift', 'random_variable'])
+                           'uv_mag', 'ha_lum', '1 + redshift', 'random_variable'])
     
     # adds a small epsilon to the variables to avoid log(0) errors
     eps_frac = 0.01
@@ -100,10 +100,10 @@ with h5py.File(file, 'r') as hdf:
     # replaces the luminosities with magnitudes
     lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
     uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
-    ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
+    # ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
     log_f_esc_vars[7] = uv_mag.astype('float32')
     log_n_esc_vars[6] = uv_mag.astype('float32')
-    log_n_esc_vars[7] = ha_mag.astype('float32')
+    # log_n_esc_vars[7] = ha_mag.astype('float32')
 
     vars = [f_esc_vars, n_esc_vars][f_or_n]
     log_vars = [log_f_esc_vars, log_n_esc_vars][f_or_n]
@@ -154,7 +154,7 @@ with h5py.File(file, 'r') as hdf:
     Y = [log_f_esc, log_n_esc][f_or_n]
 
 # run random forest 1000 times to get an average on importances and errors
-n = 10
+n = 1000
 test_mae_list = np.zeros(n)
 test_mse_list = np.zeros(n)
 train_mae_list = np.zeros(n)

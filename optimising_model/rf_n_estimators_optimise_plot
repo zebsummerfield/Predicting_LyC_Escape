@@ -24,13 +24,13 @@ fig, ax1 = plt.subplots(figsize=(8, 8))
 
 plot1 = ax1.plot(n_estimators, mean_test_mae, label='Test MAE', color='orange')
 ax1.set_xlabel('Number of Decision Trees')
-ax1.set_ylabel('Test Set Mean Absolute Error (MAE)')
+ax1.set_ylabel('Test Set Mean Absolute Error (MAE) [dex]')
 ax1.set_xlim(0, 1000)
 ax1.set_ylim(0.454, 0.4585)
 
 ax2 = ax1.twinx()
 plot2 = ax2.plot(n_estimators, mean_time, label='Training Time', color='green')
-ax2.set_ylabel('Training Time (s)')
+ax2.set_ylabel('Training Time [s]')
 ax2.set_xlim(0, 1000)
 
 thresh = ax1.axvline(n_estimators[indices_thresh[0][0]], linestyle='dashdot', label=f'MAE {threshold}\% threshold', c='r')

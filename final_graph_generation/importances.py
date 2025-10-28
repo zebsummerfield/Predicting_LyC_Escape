@@ -7,8 +7,8 @@ from functions import tableau20
 folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
-file3 = folder + 'f_esc_rf_observational_test_train.json'
-file4 = folder + 'n_esc_rf_observational_test_train.json' 
+file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
+file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
 
 # True if model is generated to predict for an observational catalogue 
 obvs = True
@@ -16,13 +16,14 @@ obvs = True
 with open((file1, file3)[obvs], 'r') as json_data:
     f_data = json.load(json_data)
     f_keys = np.array(f_data['keys'])
-    f_key_strs = np.array(['$\Delta\mathrm{MS}_{10}$', '$\mathrm{SFR}_{10}/\mathrm{SFR}_{100}$', '$M_*$', 
-                        '$M_\mathrm{gas}/M_*$', '$M_*/M_\mathrm{vir}$', '$Z$',
-                        '$M_\mathrm{UV}$', '$L_\mathrm{UV}/L_\mathrm{H\\alpha}$', '$R_\mathrm{UV}$', 
-                        '$R_\mathrm{H\\alpha}$', '$R_\mathrm{SFR}$', '$R_\mathrm{SFR}/R_{M_*}$', 
-                        '$\Sigma_\mathrm{SFR_{10}}$', '$1+z$', 'Rand'])
+    f_key_strs = np.array(['$\Delta\mathrm{MS}_{10}$', '$\mathrm{sSFR}_{100}$', '$\mathrm{SFR}_{10}/\mathrm{SFR}_{100}$',
+                           '$M_*$', '$M_\mathrm{gas}/M_*$', '$M_*/M_\mathrm{vir}$',
+                           '$Z$', '$M_\mathrm{UV}$', '$L_\mathrm{UV}/L_\mathrm{H\\alpha}$',
+                           '$R_\mathrm{UV}$', '$R_\mathrm{H\\alpha}$', '$R_\mathrm{SFR}$',
+                           '$R_\mathrm{SFR}/R_{M_*}$', '$\Sigma_\mathrm{SFR_{10}}$', '$1+z$',
+                           'Rand'])
     if obvs:
-        f_key_strs = f_key_strs[[0, 1, 2, 6, 7, 8, 9, 13, 14]]
+        f_key_strs = f_key_strs[[0, 1, 2, 3, 7, 14, 15]]
     f_importances = np.array(f_data['importances'])
     f_std_importances = np.array(f_data['std_importances'])
 
@@ -34,7 +35,7 @@ with open((file2, file4)[obvs], 'r') as json_data:
                            '$M_\mathrm{UV}$', '$L_\mathrm{H\\alpha}$', '$1+z$',
                            'Rand'])
     if obvs:
-        n_key_strs = n_key_strs[[0, 1, 2, 6, 7, 8, 9]]
+        n_key_strs = n_key_strs[[0, 1, 2, 6, 8, 9]]
     n_importances = np.array(n_data['importances'])
     n_std_importances = np.array(n_data['std_importances'])
 
@@ -66,9 +67,9 @@ for ax_i in range(len(axes)):
                    width=bar_width, color=colors[sorted_indices], capsize=5, edgecolor='black', zorder=2)
     axes[ax_i].set_ylabel('Importance')
     if obvs:
-        axes[ax_i].set_ylim(((0, 0.3), (0, 0.4))[ax_i])
+        axes[ax_i].set_ylim(((0, 0.3), (0, 0.5))[ax_i])
     else:
-        axes[ax_i].set_ylim(((0, 0.2), (0, 0.4))[ax_i])
+        axes[ax_i].set_ylim(((0, 0.22), (0, 0.4))[ax_i])
     axes[ax_i].set_xticks(x)
     axes[ax_i].set_xticklabels(key_strs[sorted_indices], rotation='vertical')
     axes[ax_i].set_xlim(x[0] - bar_width, x[-1] + bar_width)

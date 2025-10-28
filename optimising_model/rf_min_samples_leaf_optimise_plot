@@ -25,7 +25,7 @@ fig, ax = plt.subplots(figsize=(8, 8))
 plot1 = ax.plot(min_leafs, mean_test_mae, label='Test MAE', color='orange')
 plot2 = ax.plot(min_leafs, mean_train_mae, label='Train MAE', color='green')
 ax.set_xlabel('Minimum Number of Samples Allowed at End Nodes')
-ax.set_ylabel('Mean Absolute Error (MAE)')
+ax.set_ylabel('Mean Absolute Error (MAE) [dex]')
 ax.set_ylim(0.3, 0.5)
 
 thresh = ax.axvline(min_leafs[indices_thresh[0][0]], linestyle='dashdot', label=f'MAE {threshold}\% threshold', c='r')

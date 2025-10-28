@@ -32,16 +32,16 @@ gas_mass = gas_mass / 1.989e33
 y = np.log10(gas_mass)
 y = log_vars[1]
 
-y_strs = ['$\mathrm{SFR}_{10}$',
-          '$M_\mathrm{gas}$',
-          '$M_*$',
-          '$L_\mathrm{UV}$',
-          '$R_\mathrm{SFR}$']
-x_strs = ['$\mathrm{SFR}_{100}$',
-          '$M_*$',
-          '$M_\mathrm{vir}$',
-          '$L_\mathrm{H\\alpha}$',
-          '$R_{M_*}$']
+y_strs = ['$\mathrm{SFR}_{10} \, [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
+          '$M_\mathrm{gas} \, [\mathrm{M}_\odot]$',
+          '$M_* \, [\mathrm{M}_\odot]$',
+          '$L_\mathrm{UV} \, [\mathrm{erg} \, \mathrm{s}^{-1}]$',
+          '$R_\mathrm{SFR} \, [\mathrm{kpc}]$']
+x_strs = ['$\mathrm{SFR}_{100} \, [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
+          '$M_* \, [\mathrm{M}_\odot]$',
+          '$M_\mathrm{vir} \, [\mathrm{M}_\odot]$',
+          '$L_\mathrm{H\\alpha} \, [\mathrm{erg} \, \mathrm{s}^{-1}]$',
+          '$R_{M_*} \, [\mathrm{kpc}]$']
 
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 20})
@@ -73,6 +73,10 @@ for index in range(5):
                                 vmax=-0.5, vmin=-2.5, interpolation='nearest', zorder=2)
     ax.set_xlabel(x_str)
     ax.set_ylabel(y_str)
+    xrange = max(x) - min(x)
+    yrange = max(y) - min(y)
+    ax.set_xlim(min(x) - xrange * 0.05, max(x) + xrange * 0.05)
+    ax.set_ylim(min(y) - yrange * 0.05, max(y) + yrange * 0.05)
 
 
     # contour overlay of the histogram
@@ -82,10 +86,12 @@ for index in range(5):
     # PCA Direction Arrow
     vari_pcc = np.array([x, y, log_target])  
     theta, theta_err = pcc_err(vari_pcc, theta=True)
-    if index == 2:
-        theta = theta * 5
+    if index == 0:
+        theta += np.pi
+    if index == 1:
+        theta += np.pi
     if index == 4:
-        theta = - theta * 20
+        theta *= -1
     print(f'Arrow Angle : {theta}')
 
     # sets arrow appearance and position
@@ -98,14 +104,9 @@ for index in range(5):
     width = 0.0125
 
     # calculates the end points of the arrow
-    if theta < 0:
-        (da, db) = (r * np.sin(-theta), -r * np.cos(-theta))
-        angle_str = f"{round(theta * 180 / np.pi + 180, 1)}"
-        angle_error_str = f"{round(theta_err * 180 / np.pi, 1)}"
-    else:
-        (da, db) = (r * np.sin(theta), r * np.cos(theta))
-        angle_str = f"{round(theta * 180 / np.pi, 1)}"
-        angle_error_str = f"{round(theta_err * 180 / np.pi, 1)}"
+    (da, db) = (r * np.sin(theta), r * np.cos(theta))
+    angle_str = f"{round(theta * 180 / np.pi, 1)}"
+    angle_error_str = f"{round(theta_err * 180 / np.pi, 1)}"
     
     angle_label = f"$\\theta$={angle_str}$\pm${angle_error_str}$^\circ$"
 
@@ -114,8 +115,8 @@ for index in range(5):
                 width=width, ec='black', fc='red', alpha=0.8,
                 transform=ax.transAxes, zorder=5)
     
-    ax.text(0.95, 0.05, angle_label,
-            ha='right', va='bottom', fontsize=16,
+    ax.text(0.05, 0.95, angle_label,
+            ha='left', va='top', fontsize=16,
             transform=ax.transAxes)
 
     ax.set_box_aspect(1)

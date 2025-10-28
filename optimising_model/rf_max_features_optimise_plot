@@ -17,9 +17,10 @@ fig, ax = plt.subplots(figsize=(8, 8))
 
 plot1 = ax.plot(max_features, mean_test_mae, label='Test MAE', color='orange')
 ax.set_xlabel('Maximum Number of Features Considered at Node Splits')
-ax.set_ylabel('Test Set Mean Absolute Error (MAE)')
-ax.set_xlim(1, 15)
-ax.set_ylim(0.44, 0.49)
+ax.set_ylabel('Test Set Mean Absolute Error (MAE) [dex]')
+ax.set_xlim(1, 16)
+ax.set_ylim(0.42, 0.48)
+ax.set_xticks(max_features[1::2])
 
 thresh = ax.axvline(np.sqrt(max(max_features)), linestyle='dashdot', label=f'Square Root Total Features', c='r')
 

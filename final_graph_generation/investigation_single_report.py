@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from functions import *
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
+f_or_n = 0
 
 # True if model is generated to predict for an observational catalogue 
 obvs = False
@@ -14,7 +14,7 @@ file = 'cat.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=False)
 
 print(keys)
-x_index = 6
+x_index = 7  # index of M_UV in log_vars
 log_x = log_vars[x_index]
 
 plt.style.use('./MNRAS_Style.mplstyle')
@@ -38,7 +38,7 @@ for ax_i in range(len(axes)):
     hist = np.log10(hist)
     hist[hist == -np.inf] = 0
     h1 = axes[ax_i].imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], 
-                    origin='lower', aspect='auto', cmap='viridis', interpolation='nearest', vmin=0, vmax=2.3)
+                    origin='lower', aspect='auto', cmap='viridis', interpolation='nearest', vmin=0)
     axes[ax_i].set_xlabel("$M_{\mathrm{UV}}$")
     axes[ax_i].set_ylabel(f_or_n_str)
 
@@ -47,16 +47,22 @@ for ax_i in range(len(axes)):
     bins = np.quantile(log_x, np.linspace(0, 1, nbins + 1))
     bin_indices = np.digitize(log_x, bins)
     x_medians, y_medians = ([], [])
+    y_16th, y_84th = ([], [])
     for i in range(1, len(bins)):
         bin_mask = bin_indices == i
         x_medians.append(np.median(log_x[bin_mask]))
         y_medians.append(np.median(log_y[bin_mask]))
+        y_16th.append(np.percentile(log_y[bin_mask], 16))
+        y_84th.append(np.percentile(log_y[bin_mask], 84))
 
     # plots the median of log_x against the median of log_y for each bin
-    axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.9, label="median $f_{esc}$")
+    axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$")
+    axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
     axes[ax_i].set_xlim(min(x_medians), max(x_medians))
     axes[ax_i].set_ylim(y_limits)
     axes[ax_i].set_box_aspect(1)
+    axes[ax_i].tick_params(left=False, right=False, top=False, bottom=False)
+    axes[ax_i].minorticks_off()
     axes[ax_i].grid(False)
     #axes[ax_i].grid(True, alpha=0.6, linestyle='--')
 

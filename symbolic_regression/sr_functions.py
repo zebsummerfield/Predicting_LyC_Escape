@@ -22,6 +22,8 @@ def prepare_data_sr(file, f_or_n=0, basic=False, obvs=False, obvs_cat='charlotte
         The path to the hdf5 file containing the training data
     f_or_n: int
         0 for f_esc, 1 for n_esc
+    basic: bool
+        True if only the basic observational variables (raw from dataset) are to be used as features
     obvs: bool
         True if model is generated to predict for an observational catalogue
     obvs_cat: str
@@ -126,10 +128,10 @@ def prepare_data_sr(file, f_or_n=0, basic=False, obvs=False, obvs_cat='charlotte
         # replaces the luminosities with magnitudes
         lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
         uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
-        ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
+        # ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
         log_f_esc_vars[7] = uv_mag.astype('float32')
         log_n_esc_vars[6] = uv_mag.astype('float32')
-        log_n_esc_vars[7] = ha_mag.astype('float32')
+        # log_n_esc_vars[7] = ha_mag.astype('float32')
 
         # selects only the variables that are present in the observational catalogue
         if obvs_cat == 'lola':
@@ -138,17 +140,20 @@ def prepare_data_sr(file, f_or_n=0, basic=False, obvs=False, obvs_cat='charlotte
         else:
             f_esc_observational_vars = [0, 1, 2, 3, 7, 14, 15]        
             n_esc_observational_vars = [0, 1, 2, 6, 8, 9]
-
         var_list_index = ((f_or_n), 2)[basic]
         vars = [f_esc_vars, n_esc_vars, basic_vars][var_list_index]
         log_vars = [log_f_esc_vars, log_n_esc_vars, log_basic_vars][var_list_index]
         keys = [f_esc_keys, n_esc_keys, basic_keys][var_list_index]
         selected_vars = [f_esc_observational_vars, n_esc_observational_vars, [0, 1, 2, 6, 12]][var_list_index]
-
         if obvs:
             keys = keys[selected_vars]
             vars = vars[selected_vars]
             log_vars = log_vars[selected_vars]
+        # Add any additional variables specified
+        if add_vars:
+            keys = np.concatenate((keys, add_vars))
+            vars = np.concatenate((vars, add_vars_list))
+            log_vars = np.concatenate((log_vars, np.log10(add_vars_list).astype('float32')))
         print(keys)
         
         # removes any rows that have zero ,unity, nan or infinity for the vars and f_esc

@@ -124,11 +124,11 @@ def linear_1var(p, X):
 # form for the number density of galaxies as a function of stellar mass
 m_redshifts = np.array([4, 5, 6, 7, 8, 9])
 m_alpha_fit = {4: -1.79, 5: -1.86, 6: -1.95, 7: -1.93, 8: -2.16, 9: -2.0}
-m_alpha_fit_err = {4: 0.01, 5: 0.03, 6: 0.07, 7: 0.04, 8: 0.19, 9: 0}
+m_alpha_fit_err = {4: 0.01, 5: 0.03, 6: 0.07, 7: 0.04, 8: 0.19, 9: 0.19}
 log_m_phi_fit = {4: -4.52,5 : -4.07, 6: -4.26, 7: -4.36, 8: -4.86, 9: -4.93}
 log_m_phi_fit_err = {4: 0.13, 5: 0.13, 6: 0.36, 7: 0.05, 8: 0.20, 9: 0.07}
 log_m_mass_fit = {4: 11.01, 5: 10.26, 6: 10.01, 7: 10.0, 8: 10.0, 9: 10.0}
-log_m_mass_fit_err = {4: 0.14, 5: 0.12, 6: 0.32, 7: 0, 8: 0, 9: 0}
+log_m_mass_fit_err = {4: 0.14, 5: 0.12, 6: 0.32, 7: 0.32, 8: 0.32, 9: 0.32}
 def schechter_mass(mass, m_alpha_fit, log_m_phi_fit, log_m_mass_fit):
     m_phi_fit = 10**log_m_phi_fit
     m_mass_fit = 10**log_m_mass_fit
@@ -241,7 +241,7 @@ uv_phi_fit_err = {2.1: 0.4, 2.9: 0.3, 3.8: 0.21, 4.9: 0.14, 5.9: 0.11, 6.8: 0.07
 uv_mag_fit = {2.1: -20.28, 2.9: -20.87, 3.8: -20.93, 4.9: -21.10, 5.9: -20.93, 6.8: -21.15,
               7.9: -20.93, 8.9: -21.15, 10.2: -21.19}
 uv_mag_fit_err = {2.1: 0.09, 2.9: 0.09, 3.8: 0.08, 4.9: 0.11, 5.9: 0.09, 6.8: 0.13,
-                  7.9: 0.28, 8.9: 0, 10.2: 0}
+                  7.9: 0.28, 8.9: 0.28, 10.2: 0.28}
 def schechter_uv(mag, uv_alpha_fit, uv_phi_fit, uv_mag_fit):
     uv_phi_fit = uv_phi_fit * 1e-3
     k = 10 ** (0.4 * (uv_mag_fit - mag))
@@ -319,7 +319,7 @@ if not split_contribution:
     log_uv_err_high = np.log10(uv_N_escs_high) - log_uv_N_escs
 # integrates over the number density of galaxies multiplied by n_esc for different magnitude bands
 else:
-    uv_bands = [(-18, -14), (-20, -18), (-30, -20)]
+    uv_bands = [(-17, -14), (-20, -17), (-30, -20)]
     split_uv_N_escs = []
     for band in uv_bands:
         uv_N_escs = []
@@ -348,9 +348,9 @@ if not split_contribution:
     z_space = np.linspace(1, 11, 100)
     for C in [1, 3, 10]:
         ax.plot(z_space, np.log10(critical(z_space, C)), c='grey', zorder=1)
-        text_z = 8.25
+        text_z = 2
         ax.text(text_z, np.log10(critical(text_z, C))-0.08, f'$C = {C}$',
-                rotation=15, color='grey')
+                rotation=40, color='grey')
     ax.fill_between(z_space, np.log10(critical(z_space, 1)), np.log10(critical(z_space, 10)),
                     color='grey', alpha=0.2, zorder=1, label='$\dot{N}_\mathrm{ion}$ Critical')
     
@@ -372,7 +372,7 @@ if not split_contribution:
     ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
     ax.yaxis.set_label_coords(-0.075, 0.5)
     ax.set_xlim((1, 11))
-    ax.set_ylim((49, 51.5))
+    ax.set_ylim((48.7, 51.2))
     ax.grid(True, alpha=0.8, linestyle='--')
     ax.set_axisbelow(True)
     for line in ax.get_xgridlines() + ax.get_ygridlines():
@@ -390,12 +390,12 @@ else:
 
     bar_width = 0.25
     offsets = [-bar_width, 0, bar_width]
-    uv_labels = ('$-18 < M_\mathrm{UV} \leq -14$',
-                 '$-20 < M_\mathrm{UV} \leq -18$',
-                 '$M_\mathrm{UV} \leq -20$')
+    uv_labels = ('$-17 < M_\mathrm{UV} \leq -14$',
+                 '$-20 < M_\mathrm{UV} \leq -17$',
+                 '$-30 < M_\mathrm{UV} \leq -20$')
     m_labels = ('$6 \leq \mathrm{log}_{10}(M_*) < 8$',
                 '$8 \leq \mathrm{log}_{10}(M_*) < 10$',
-                '$\mathrm{log}_{10}(M_*) \geq 10$')
+                '$10 \leq \mathrm{log}_{10}(M_*) < 12$')
     uv_colors = ['#66c2a5', '#3288bd', '#5e4fa2']  # Teal, Medium Blue, Deep Blue
     m_colors = ['#fdb863', '#e66101', '#b2182b']  # Gold, Orange, Crimson
 
@@ -414,7 +414,7 @@ else:
         axes[ax_i].set_ylabel('$\dot{N}_{\mathrm{ion}} \; [10^{50} \; \mathrm{s^{-1} \; cpc^{-3}}]$')
         axes[ax_i].yaxis.set_label_coords(-0.10, 0.5)
         axes[ax_i].set_xlim(3.25, 9.75)
-        axes[ax_i].set_ylim(0, 3)
+        axes[ax_i].set_ylim(0, 2.5)
         axes[ax_i].grid(False)
         axes[ax_i].grid(True,  alpha=0.8, axis='y')
         axes[ax_i].set_axisbelow(True)
@@ -425,7 +425,7 @@ else:
         legend.get_frame().set_boxstyle('Square')
         legend.get_frame().set_alpha(1.0)
 
-
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
+fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
 plt.show()

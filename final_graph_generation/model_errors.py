@@ -7,8 +7,8 @@ import matplotlib as mpl
 folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
-file3 = folder + 'f_esc_rf_observational_test_train.json'
-file4 = folder + 'n_esc_rf_observational_test_train.json' 
+file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
+file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
 files = [file1, file2, file3, file4]
 file_strs = ['Model A', 'Model B', 'Model C', 'Model D']
 

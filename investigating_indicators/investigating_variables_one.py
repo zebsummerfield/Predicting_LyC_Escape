@@ -18,6 +18,7 @@ with h5py.File(file, 'r') as hdf:
     f_esc = np.array(hdf['f_esc_vir_full'])
     n_esc = np.array(hdf['Ndot_LyC_vir_full'])
 
+    resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
     star_mass = np.array(hdf['stellar_mass_full'])
     ssfr10 = ssfr_func(hdf['sfr_full_10'], star_mass)
@@ -44,7 +45,7 @@ with h5py.File(file, 'r') as hdf:
                      1/uv_density, uv_obs/uv_lum])
 
     #variable we are investigating for an f_esc relationship
-    x = 1+redshift
+    x = ssfr10/ssfr100
 
     # removes any rows that have zero, nan or infinity for the x, ssfr10, f_esc and n_esc
     for i in range(len(np.concatenate(([x], [vars[1]], [f_esc, n_esc])))):
