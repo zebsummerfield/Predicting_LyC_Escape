@@ -2,6 +2,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
+from matplotlib.ticker import MaxNLocator
 from functions import tableau20
 
 folder = "final_rf_model/"
@@ -9,6 +10,10 @@ file1 = folder + 'f_esc_rf_final_test_train.json'
 file2 = folder + 'n_esc_rf_final_test_train.json'
 file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
 file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
+model_strs = ['Model A - Best $f_\mathrm{esc}$ Predictor',
+              'Model B - Best $n_\mathrm{ion,esc}$ Predictor',
+              'Model C - Observational $f_\mathrm{esc}$ Predictor',
+              'Model D - Observational $n_\mathrm{ion,esc}$ Predictor']
 
 # True if model is generated to predict for an observational catalogue 
 obvs = True
@@ -43,9 +48,9 @@ with open((file2, file4)[obvs], 'r') as json_data:
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 20})
 if obvs:
-    fig, axes = plt.subplots(1, 2, figsize=(16, 5))
+    fig, axes = plt.subplots(1, 2, figsize=(20, 5))
 else: 
-    fig, axes = plt.subplots(2, 1, figsize=(16, 10))
+    fig, axes = plt.subplots(2, 1, figsize=(20, 10))
 
 for ax_i in range(len(axes)):
     axes[ax_i].tick_params(axis='x', which='both', bottom=False, top=False)
@@ -67,12 +72,17 @@ for ax_i in range(len(axes)):
                    width=bar_width, color=colors[sorted_indices], capsize=5, edgecolor='black', zorder=2)
     axes[ax_i].set_ylabel('Importance')
     if obvs:
-        axes[ax_i].set_ylim(((0, 0.3), (0, 0.5))[ax_i])
+        axes[ax_i].set_ylim((0, 0.5))
     else:
-        axes[ax_i].set_ylim(((0, 0.22), (0, 0.4))[ax_i])
+        axes[ax_i].set_ylim((0, 0.4))
     axes[ax_i].set_xticks(x)
     axes[ax_i].set_xticklabels(key_strs[sorted_indices], rotation='vertical')
     axes[ax_i].set_xlim(x[0] - bar_width, x[-1] + bar_width)
+    axes[ax_i].yaxis.set_major_locator(MaxNLocator(nbins=(4, 5)[obvs]))
+
+
+    axes[ax_i].text(0.5, (0.925, 0.95)[obvs], model_strs[ax_i + obvs * 2], 
+                ha='center', va='top', transform=axes[ax_i].transAxes, fontsize=24)
 
 mpl.rcParams['figure.dpi'] = 500
 plt.tight_layout()

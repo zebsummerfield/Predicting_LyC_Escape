@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 from functions import *
 
 # 0 for f_esc, 1 for n_esc
@@ -15,7 +16,7 @@ keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=ob
 log_y = [log_f_esc, log_n_esc][f_or_n]
 f_or_n_str = ['$\mathrm{Log}_{10}(f_{\mathrm{esc}})$',
                 '$\mathrm{Log}_{10}(\dot{n}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]
-y_limits = ((-5, 0), (46, 54))[f_or_n]
+y_limits = ((-5.5, 0), (45, 54))[f_or_n]
 
 f_strs = ['$\Delta\mathrm{MS}_{10} \; [\mathrm{dex}]$',
           '$\mathrm{sSFR}_{100} \; [\mathrm{Gyr^{-1}}]$',
@@ -44,8 +45,7 @@ n_strs = ['$\mathrm{SFR}_{10} \; [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
 var_strs = [f_strs, n_strs][f_or_n]
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
-# Create figure with GridSpec to have better control over subplots and colorbar
+mpl.rcParams.update({'font.size': 17})
 fig, axes = plt.subplots((3, 2)[f_or_n], 5, figsize=((24, 12), (24, 8))[f_or_n])
 axes = axes.flatten()
 # remove last unused subplot for n_esc case
@@ -88,11 +88,12 @@ for index in range((15, 9)[f_or_n]):
     ax.fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
     ax.set_xlim(min(x_medians), max(x_medians))
     ax.set_ylim(y_limits)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
     ax.set_box_aspect(1)
     ax.grid(False)
 
-fig.tight_layout(w_pad=2.5)
-cbar = fig.colorbar(h1, ax=axes, orientation='vertical', aspect=(30, 20)[f_or_n])
+fig.tight_layout()
+cbar = fig.colorbar(h1, ax=axes, orientation='vertical', aspect=(30, 20)[f_or_n], pad=0.03)
 cbar.set_label("$\mathrm{Log}_{10}(\mathrm{N_{bin}})$")
 mpl.rcParams['figure.dpi'] = 500
 fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)

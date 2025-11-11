@@ -45,7 +45,7 @@ with h5py.File(file, 'r') as hdf:
                      1/uv_density, uv_obs/uv_lum])
 
     #variable we are investigating for an f_esc relationship
-    x = ssfr10/ssfr100
+    x = hdf['sfr_full_100']
 
     # removes any rows that have zero, nan or infinity for the x, ssfr10, f_esc and n_esc
     for i in range(len(np.concatenate(([x], [vars[1]], [f_esc, n_esc])))):
@@ -65,7 +65,7 @@ with h5py.File(file, 'r') as hdf:
     log_sfms10 =  log_vars[0] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[0], b[0], u[0])
     log_sfms100 =  log_vars[2] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[1], b[1], u[1])
 
-    log_x = np.log10(x).astype('float32') 
+    log_x = np.log10(x).astype('float32')
 
 matplotlib.rcParams.update({'font.size': (18, 10)[c]})
 fig, axes = plt.subplots(1, 2, figsize=((16, 8), (12, 6))[c])

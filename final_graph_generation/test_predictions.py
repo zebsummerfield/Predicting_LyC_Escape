@@ -3,15 +3,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import matplotlib as mpl
-from matplotlib.colors import LinearSegmentedColormap
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-
-def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
-    new_cmap = LinearSegmentedColormap.from_list(
-        f'trunc({cmap.name},{minval:.2f},{maxval:.2f})',
-        cmap(np.linspace(minval, maxval, n))
-    )
-    return new_cmap
+from matplotlib.ticker import MaxNLocator
+from functions import *
 
 folder = "final_rf_model/"
 file1 = folder + 'f_esc_rf_final_test_train.json'
@@ -20,7 +13,7 @@ file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
 file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
 
 # True if model is generated to predict for an observational catalogue 
-obvs = False
+obvs = True
 
 # True if histogram bin colour is logarithmic
 log = False
@@ -72,21 +65,27 @@ with open((file2, file4)[obvs], 'r') as json_data:
     print(f"Minimum n_esc Test Prediction: {min(n_test_pred)}")
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
-fig = plt.figure(figsize=(16, 10))
+mpl.rcParams.update({'font.size': 18})
+width = 0.4
+fig_ratio = 1.6
+fig = plt.figure(figsize=(10*fig_ratio, 10))
 # Create subplots with explicit positions - this gives us total control
 # [left, bottom, width, height] - all values are fractions of figure size
-ax1 = fig.add_axes([0.1, 0.38, 0.3, 0.57])  # top left
-ax2 = fig.add_axes([0.6, 0.38, 0.3, 0.57])   # top right
-ax3 = fig.add_axes([0.1, 0.28, 0.3, 0.13])   # bottom left - smaller height
-ax4 = fig.add_axes([0.6, 0.28, 0.3, 0.13])    # bottom right - smaller height
+ax1 = fig.add_axes([0.05, 0.26, width, width * fig_ratio])  # top left
+ax2 = fig.add_axes([0.55, 0.26, width, width * fig_ratio])   # top right
+ax3 = fig.add_axes([0.05, 0.08, width, width * fig_ratio / 4])   # bottom left - smaller height
+ax4 = fig.add_axes([0.55, 0.08, width, width * fig_ratio / 4])    # bottom right - smaller height
 axes = np.array([[ax1, ax2], [ax3, ax4]])
+cbar_ax1 = fig.add_axes([0.05, 0.92, width, 0.02]) # colorbar axis for top left plot
+cbar_ax2 = fig.add_axes([0.55, 0.92, width, 0.02]) # colorbar axis for top right plot
+cbar_ax1.xaxis.set_label_coords(0.5, 3)
+cbar_ax2.xaxis.set_label_coords(0.5, 3)
 hists = []
 
 f_esc_str = "$\mathrm{Log}_{10}(f_\mathrm{esc})$"
 f_esc_pred_str = "$\mathrm{Log}_{10}(f_\mathrm{esc})$ Predicted"
-n_esc_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$"
-n_esc_pred_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$ Predicted"
+n_esc_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$"
+n_esc_pred_str = "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$ Predicted"
 
 for ax_i in range(len(axes)):
     target_str = [f_esc_str, n_esc_str][ax_i]
@@ -94,12 +93,13 @@ for ax_i in range(len(axes)):
     test = [f_test, n_test][ax_i]
     test_pred = [f_test_pred, n_test_pred][ax_i]
 
-    x_min, x_max = [(-5, 0), (46, 54)][ax_i]
-    nbins = 60
+    x_min, x_max = [(-5, 0), (45, 55)][ax_i]
+    nbins = 75
     x_bins = np.linspace(x_min, x_max, nbins+1)
     
     axes[0, ax_i].set_xlim(x_min, x_max)
     axes[0, ax_i].set_ylim(x_min, x_max)
+    axes[0, ax_i].yaxis.set_major_locator(MaxNLocator(nbins=10, integer=True))
     axes[1, ax_i].set_xlim(x_min, x_max)
     # hide x labels for top plots to improve appearance
     plt.setp(axes[0, ax_i].get_xticklabels(), visible=False)
@@ -120,7 +120,7 @@ for ax_i in range(len(axes)):
     # plt.colorbar(h1, label=color_label, ax=axes[0][ax_i], fraction=0.046, pad=0.04)
     axes[0, ax_i].set_ylabel(target_str)
     # ensure ylabel doesn't get cut off
-    axes[0, ax_i].yaxis.set_label_coords(-0.10, 0.5)
+    axes[0, ax_i].yaxis.set_label_coords(-0.075, 0.5)
 
     # seperates the galaxies into bins of predicted test target with each containing equal numbers of galaxies, 
     # then plots the median of predicted test target against the median of test target for each bin
@@ -137,7 +137,7 @@ for ax_i in range(len(axes)):
         test_medians[i-1] = np.median(test[bin_mask])
         test_pred_mae[i-1] = mean_absolute_error(test[bin_mask], test_pred[bin_mask])
         test_pred_mse[i-1] = mean_squared_error(test[bin_mask], test_pred[bin_mask])
-    axes[0, ax_i].plot(test_pred_medians, test_medians, c='r', linewidth=2, alpha=0.8, zorder=3)
+    axes[0, ax_i].plot(test_pred_medians, test_medians, c='r', linewidth=3, alpha=0.8, zorder=3)
     # axes[0, ax_i].fill_between(test_pred_medians, test_medians - test_pred_mae, test_medians + test_pred_mae,
     #                            color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
 
@@ -146,29 +146,35 @@ for ax_i in range(len(axes)):
 
     purple_max = mpl.colormaps['Purples'](1.0)
     green_max = mpl.colormaps['Greens'](1.0)
-    axes[1, ax_i].plot(test_pred_medians, test_pred_mae, c=(purple_max, green_max)[ax_i], linewidth=2.5, alpha=0.9)
-    axes[1, ax_i].set_ylim(0.260, 0.660)
+
+    bars = True
+    if not bars:
+        axes[1, ax_i].plot(test_pred_medians, test_pred_mae, c=(purple_max, green_max)[ax_i], linewidth=3, alpha=0.9)
+    else:
+        bin_centres = (bins[:-1] + bins[1:]) / 2
+        bin_widths = np.diff(bins)
+        axes[1, ax_i].bar(bin_centres, test_pred_mae, width=bin_widths,
+                          color=(purple_max, green_max)[ax_i], alpha=0.7, edgecolor='black')
+    axes[1, ax_i].set_ylim(0.250, 0.650)
     axes[1, ax_i].set_xlabel(target_pred_str)
     axes[1, ax_i].set_ylabel('MAE [dex]')
-    axes[1, ax_i].yaxis.set_label_coords(-0.10, 0.5)
+    axes[1, ax_i].yaxis.set_label_coords(-0.075, 0.5)
+    axes[1, ax_i].xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+    axes[1, ax_i].yaxis.set_major_locator(MaxNLocator(nbins=4))
+    axes[0, ax_i].yaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
 
-    axes[0, ax_i].set_box_aspect(1)
-    axes[0, ax_i].grid(True, alpha=0.4, linestyle='--')
-    axes[1, ax_i].grid(True, alpha=0.8, linestyle='--')
-    # add grid lines in background of graph
+    # axes[0, ax_i].grid(True, alpha=0.4, linestyle='--')
+    # axes[1, ax_i].grid(True, alpha=0.8, linestyle='--')
     for ax in axes[:,ax_i]:
-        ax.set_axisbelow(True)
-        for line in ax.get_xgridlines() + ax.get_ygridlines():
-            line.set_zorder(0)
+        ax.grid(False)
+        # ax.set_axisbelow(True)
+        # for line in ax.get_xgridlines() + ax.get_ygridlines():
+        #     line.set_zorder(0)
 
 if log:
     color_label = "$\mathrm{Log}_{10}(\mathrm{N_{bin}})$"
 else:
     color_label = "$\mathrm{N_{bin}}$"
-cbar_ax1 = fig.add_axes([0.1, 0.92, 0.3, 0.02])  # [left, bottom, width, height]
-cbar_ax2 = fig.add_axes([0.6, 0.92, 0.3, 0.02])   # [left, bottom, width, height]
-cbar_ax1.xaxis.set_label_coords(0.5, 3)
-cbar_ax2.xaxis.set_label_coords(0.5, 3)
 cbar1 = fig.colorbar(hists[0], cax=cbar_ax1, orientation='horizontal')
 cbar2 = fig.colorbar(hists[1], cax=cbar_ax2, orientation='horizontal')
 cbar1.set_label(color_label)

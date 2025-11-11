@@ -5,6 +5,7 @@ import random
 import scipy.optimize as so
 import scipy.stats as ss
 from sklearn.utils import resample
+from matplotlib.colors import LinearSegmentedColormap
 
 def ssfr_func(sfr, mass):
     return np.array(sfr) / np.array(mass) * 1e9
@@ -17,6 +18,13 @@ def sfms_func(xdata, s, b, u):
     redshift = xdata[0,:]
     stellar_mass = 10**xdata[1,:]
     return np.log10(s * (stellar_mass / 1e10)**b * (1 + redshift)**u)
+
+def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
+    new_cmap = LinearSegmentedColormap.from_list(
+        f'trunc({cmap.name},{minval:.2f},{maxval:.2f})',
+        cmap(np.linspace(minval, maxval, n))
+    )
+    return new_cmap
 
 tableau20 = {'sfr10': (31/255, 119/255, 180/255),   # Blue 
              'sfr100': (174/255, 199/255, 232/255),  # Light Blue
@@ -134,6 +142,7 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', eps=True, add
         add_vars_list = []
         for str in add_vars:
             add_vars_list.append(np.array(hdf[str]))
+        add_vars_list = np.array(add_vars_list)
 
         random_variable = np.random.uniform(low=0, high=1, size=(len(f_esc)))
 
@@ -161,6 +170,11 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', eps=True, add
             for i in range(len(eps_array)):
                 eps_array[i].fill(n_epsilons[i])
             n_esc_vars = n_esc_vars + eps_array
+            add_epsilons = np.array([min([v for v in var if v !=0])*eps_frac for var in add_vars_list])
+            eps_array = np.zeros(add_vars_list.shape)
+            for i in range(len(eps_array)):
+                eps_array[i].fill(add_epsilons[i])
+            add_vars_list = add_vars_list + eps_array
 
         # post adding epsilon, the variables are changed to match the desired form given by their key
         f_esc_vars[2] = f_esc_vars[0] / f_esc_vars[1]

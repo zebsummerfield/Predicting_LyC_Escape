@@ -12,12 +12,16 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, root_mean_s
 
 folder = "symbolic_regression/"
 
+# 0 for f_esc, 1 for n_esc
+f_or_n = 0
+f_or_n_str = ('f_esc', 'n_esc')[f_or_n]
+
 # if c = 0 then large graphs are plotted, if c = 1 then small graphs are plotted
 c = 1
 # if invert == 1 then esc is on the x-axis, if invert == -1 then esc_predicted is on the x-axis
 invert = -1
 
-with open(folder+'esc_sr_test_train.json', 'r') as json_data:
+with open(folder + f_or_n_str + '_sr_test_train.json', 'r') as json_data:
     f_data = json.load(json_data)
     test = np.array(f_data['esc_test'])
     train = np.array(f_data['esc_train'])
@@ -27,9 +31,9 @@ with open(folder+'esc_sr_test_train.json', 'r') as json_data:
 
 print(equation)
 print(f"Train Mean Absolute Error: {mean_absolute_error(train, train_pred)}")
-print(f"Train Mean Root Squared Error: {root_mean_squared_error(train, train_pred)}")
+print(f"Train Mean Squared Error: {mean_squared_error(train, train_pred)}")
 print(f"Test Mean Absolute Error: {mean_absolute_error(test, test_pred)}")
-print(f"Test Mean Root Squared Error: {root_mean_squared_error(test, test_pred)}")
+print(f"Test Mean Squared Error: {mean_squared_error(test, test_pred)}")
 
 mpl.rcParams.update({'font.size': (16, 10)[c]})
 fig, axes = plt.subplots(1, 2, figsize=((16, 8), (12, 6))[c])

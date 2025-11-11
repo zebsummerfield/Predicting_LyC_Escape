@@ -17,8 +17,14 @@ with fits.open("prosp_properties_GOODSN.fits") as hdul1:
     data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
 with fits.open("prosp_properties_GOODSS.fits") as hdul2:
     data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
+# with fits.open("masked_objects_gn.fits") as hdul1:
+#     data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
+# with fits.open("masked_objects_gs.fits") as hdul2:
+#     data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
 obvs_data = {key: np.concatenate([data1[key], data2[key]]) for key in data1}
 print(obvs_data.keys())
+
+import pdb; pdb.set_trace()
 
 obvs_redshift = obvs_data['z']
 obvs_star_mass = 10**(np.array(obvs_data['log(Mstar)']).astype('float64'))
@@ -51,10 +57,9 @@ obvs_log_vars = [obvs_log_f_esc_vars, obvs_log_n_esc_vars][f_or_n]
 obvs_keys = [obvs_f_esc_keys, obvs_n_esc_keys][f_or_n]
 print(obvs_keys)
 
-#import pdb; pdb.set_trace()
-
 # removes any rows that have zero, nan or infinity for the vars
 bad_indices = []
+print(f"SN(F44W) < 3 rows: {len(bad_indices)}")
 for i in range(len(obvs_vars)):
     b_i = [index for index, val in enumerate(list((obvs_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or val == np.nan)]
@@ -64,6 +69,7 @@ bad_indices = list(set(bad_indices))[::-1]
 obvs_vars = np.delete(obvs_vars, bad_indices, axis=1)
 obvs_log_vars = np.delete(obvs_log_vars, bad_indices, axis=1)
 print(f'rows remaining: {len(obvs_vars[i])}')
+import pdb; pdb.set_trace()
 
 # each row contains the data for a single galaxy
 X = np.transpose(obvs_log_vars)

@@ -16,11 +16,15 @@ import sympy as sp
 folder = "symbolic_regression/"
 file = 'cat.hdf5'
 
+# 0 for f_esc, 1 for n_esc
+f_or_n = 1
+f_or_n_str = ('f_esc', 'n_esc')[f_or_n]
+
 # Opening model and data files
 with open(folder+"pysr_model.pkl", "rb") as f:
     model = pickle.load(f)
     model.set_params(extra_sympy_mappings={"pow10": lambda x: 10**x})
-with open(folder+'esc_sr_test_train.json', 'r') as json_data:
+with open(folder + f_or_n_str + '_sr_test_train.json', 'r') as json_data:
     f_data = json.load(json_data)
     x_test = np.array(f_data['test_data'])
     x_train = np.array(f_data['train_data'])
@@ -80,16 +84,16 @@ else:
 
 # saving the data to a json file
 sr_data = {'keys': keys,
-           'esc_test': y_test.tolist(), 
-           'esc_train': y_train.tolist(), 
-           'esc_test_pred': y_test_pred.tolist(), 
+           'esc_test': y_test.tolist(),
+           'esc_train': y_train.tolist(),
+           'esc_test_pred': y_test_pred.tolist(),
            'esc_train_pred': y_train_pred.tolist(),
            'equation': (str(model.sympy()), str(model.sympy(knee_index)))[save_knee],
            'test_data': x_test.tolist(),
            'train_data': x_train.tolist(),
            'res_train': res_train,
            'res_test': res_test}
-with open(folder+'esc_sr_test_train.json', 'w') as json_file:
+with open(folder + f_or_n_str + '_sr_test_train.json', 'w') as json_file:
     json.dump(sr_data, json_file)
 
 plt.figure(figsize=(10,10))

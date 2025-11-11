@@ -11,7 +11,7 @@ c = 0
 invert = -1
 
 folder = "final_rf_model/"
-file = folder + 'f_esc_rf_observational_test_train.json'
+file = folder + 'f_esc_rf_final_test_train.json'
 with open(file, 'r') as json_data:
     f_data = json.load(json_data)
 

@@ -166,9 +166,9 @@ def prepare_data_sr(file, f_or_n=0, basic=False, obvs=False, obvs_cat='charlotte
                             if (val == 0 or val == 1 or val == np.inf or val== -np.inf or np.isnan(val))]
             print(f"feature {i+1} bad rows: {len(b_i)}")
             bad_indices += b_i
-        # b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z4']
-        # print(f"zoom level bad rows: {len(b_i)}")
-        # bad_indices += b_i
+        b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z4']
+        print(f"zoom level bad rows: {len(b_i)}")
+        bad_indices += b_i
         bad_indices = list(set(bad_indices))[::-1]
         f_esc, n_esc = (np.delete(f_esc, bad_indices), np.delete(n_esc, bad_indices))
         log_vars = np.delete(log_vars, bad_indices, axis=1)

@@ -25,7 +25,8 @@ print(keys)
 # print(f"rows deleted: {len(nan_indices)}")
 # Y = np.delete(Y, nan_indices)
 # log_vars = np.delete(log_vars, nan_indices, axis=1)
-X = np.transpose(log_vars)
+features = ([2, 3, 4], [0, 1, 3])[f_or_n]
+X = np.transpose(log_vars[features])
 scaler = StandardScaler()
 X_scaled = scaler.fit_transform(X)
 
@@ -39,11 +40,11 @@ model = PySRRegressor(
     population_size=100,
     niterations=100,
     binary_operators=["*", "+", "-", "/"],
-    unary_operators=["pow10(x) = 10 ^ x"],
-    # unary_operators=["square", "inv", "sqrt", "exp", "log", "abs"],
-    extra_sympy_mappings={"pow10": lambda x: 10**x},
+    # unary_operators=["pow10(x) = 10 ^ x"],
+    unary_operators=["exp", "log"],
+    # extra_sympy_mappings={"pow10": lambda x: 10**x},
     model_selection="accuracy",
-    select_k_features=5,
+    # select_k_features=5,
     maxdepth=5,
     batching=True,
     batch_size=4096,
@@ -51,10 +52,10 @@ model = PySRRegressor(
     parallelism='multiprocessing',
     turbo=True,
     # parsimony punishes complexity in the score function
-    parsimony=0.001,
-    adaptive_parsimony_scaling=1000,
-    warmup_maxsize_by=0.25,
-    use_frequency=True,
+    # parsimony=0.001,
+    # adaptive_parsimony_scaling=1000,
+    # warmup_maxsize_by=0.25,
+    # use_frequency=True,
     )
 model.fit(
     x_train,
@@ -75,6 +76,7 @@ print(f"Most Accurate - {complexity[-1]}: {model.sympy()}")
 y_train_pred = model.predict(x_train)
 y_test_pred = model.predict(x_test)
 
+f_or_n_str = ('f_esc', 'n_esc')[f_or_n]
 # saving the data to a json file
 sr_data = {'keys': keys.tolist(),
            'esc_test': y_test.tolist(), 
@@ -86,5 +88,5 @@ sr_data = {'keys': keys.tolist(),
            'equation': str(model.sympy()),
            'res_train': res_train.tolist(),
            'res_test': res_test.tolist()}
-with open(folder+'esc_sr_test_train.json', 'w') as json_file:
+with open(folder + f_or_n_str + '_sr_test_train.json', 'w') as json_file:
     json.dump(sr_data, json_file)

@@ -18,10 +18,10 @@ x_index = 7  # index of M_UV in log_vars
 log_x = log_vars[x_index]
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
+mpl.rcParams.update({'font.size': 16})
 # Create figure with GridSpec to have better control over subplots and colorbar
-fig = plt.figure(figsize=(15, 5))
-gs = fig.add_gridspec(1, 4, width_ratios=[1, 0.2, 1, 0.05], wspace=0.2)  # The last slice is for colorbar
+fig = plt.figure(figsize=(12, 5))
+gs = fig.add_gridspec(1, 4, width_ratios=[1, 0.05, 1, 0.05], wspace=0.2)  # The last slice is for colorbar
 axes = [fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 2])]
 cbar_ax = fig.add_subplot(gs[0, 3])  # Dedicated axes for colorbar
 
@@ -29,7 +29,7 @@ for ax_i in range(len(axes)):
     log_y = [log_f_esc, log_n_esc][ax_i]
     f_or_n_str = ['$\mathrm{Log}_{10}(f_{\mathrm{esc}})$',
                   '$\mathrm{Log}_{10}(\dot{n}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][ax_i]
-    y_limits = ((-5, 0), (46, 54))[ax_i]
+    y_limits = ((-5.5, 0), (45, 54))[ax_i]
 
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
     nbins = 100

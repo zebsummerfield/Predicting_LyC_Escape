@@ -181,7 +181,7 @@ for i in range(n):
     # y_train = y_train[accepted_samples]
         
     # random forest training with the test data
-    rf = RandomForestRegressor(n_estimators=140, random_state=i, n_jobs=-1,
+    rf = RandomForestRegressor(n_estimators=210, random_state=i, n_jobs=-1,
                                min_samples_leaf=50, max_features='sqrt', 
                                criterion='squared_error')
     rf.fit(x_train, y_train)

@@ -9,21 +9,29 @@ from scipy.optimize import curve_fit
 import math
 from astropy.io import fits
 from scipy import odr
-from scipy import stats
+from matplotlib.ticker import MaxNLocator
 
 # True for weighted least squares regression, False for orthogonal distance regression
 least_squares = False
+
+# True for plotting residuals against variables, False for plotting predicted target against variables
+residuals = False
+
+# True for 2D histogram, False for scatter plot
+histogram = True
 
 folder = "final_rf_model/"
 file5 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
 file6 = folder + 'n_esc_rf_observational_charlotte_test_train.json'
 
-with fits.open("prosp_properties_GOODSN.fits") as hdul1:
+with fits.open("prosp_properties_GOODSS.fits") as hdul1:
     data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
-with fits.open("prosp_properties_GOODSS.fits") as hdul2:
+with fits.open("prosp_properties_GOODSN.fits") as hdul2:
     data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
 obvs_data = {key: np.concatenate([data1[key], data2[key]]) for key in data1}
+print(obvs_data.keys())
 
+ID = obvs_data['ID']
 obvs_redshift = obvs_data['z']
 obvs_star_mass = 10**(np.array(obvs_data['log(Mstar)']).astype('float64'))
 obvs_sfr10 = np.array(obvs_data['SFR10'])
@@ -50,8 +58,22 @@ obvs_log_f_esc_vars[0] = log10_offset10.astype('float32')
 obvs_log_f_esc_vars[4] = obvs_uv_mag.astype('float32')
 obvs_log_n_esc_vars[3] = obvs_uv_mag.astype('float32')
 
-# removes any rows that have zero, nan or infinity for the vars
-bad_indices = []
+# Creates a list of bad IDs for the diffraction spike galaxies 
+with fits.open("masked_objects_gs.fits") as hdul1:
+    bad_data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
+with fits.open("masked_objects_gn.fits") as hdul2:
+    bad_data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
+bad_ID = np.array(bad_data1['ID'].tolist() + bad_data2['ID'].tolist())
+bad_indices = np.where(np.isin(ID, bad_ID))[0].tolist()
+print(f"diffraction spike rows: {len(bad_indices)}")
+
+# removes any rows that have zero, nan, or infinity for the vars; signal to noise SN(F444W) < 3; and red_chi2(JWST) > 1
+b_i = [index for index, val in enumerate(list(obvs_data['SN(F444W)'])) if val < 3]
+print(f"SN(F444W) < 3 rows: {len(b_i)}")
+bad_indices += b_i
+b_i += [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 10]
+print(f"red_chi2(JWST) > 10 rows: {len(b_i)}")
+bad_indices += b_i
 for i in range(len(obvs_f_esc_vars)):
     b_i = [index for index, val in enumerate(list((obvs_f_esc_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or val == np.nan)]
@@ -59,20 +81,25 @@ for i in range(len(obvs_f_esc_vars)):
     bad_indices += b_i
 bad_indices = list(set(bad_indices))[::-1]
 obvs_redshift = np.delete(obvs_redshift, bad_indices)
-obvs_f_esc_vars = np.delete(obvs_f_esc_vars, bad_indices, axis=1)
-obvs_n_esc_vars = np.delete(obvs_n_esc_vars, bad_indices, axis=1)
 obvs_log_f_esc_vars = np.delete(obvs_log_f_esc_vars, bad_indices, axis=1)
 obvs_log_n_esc_vars = np.delete(obvs_log_n_esc_vars, bad_indices, axis=1)
 obvs_star_mass_high_error = np.delete(np.array(obvs_data['log(Mstar)_ehi']), bad_indices)
 obvs_star_mass_low_error = np.delete(np.array(obvs_data['log(Mstar)_elo']), bad_indices)
 obvs_uv_mag_high_error = np.delete(np.array(obvs_data['M1500int_ehi']), bad_indices)
 obvs_uv_mag_low_error = np.delete(np.array(obvs_data['M1500int_elo']), bad_indices)
-print(f'rows remaining: {len(obvs_f_esc_vars[i])}')
+print(f'rows remaining: {len(obvs_redshift)}')
 
-vars = [obvs_f_esc_vars, obvs_n_esc_vars]
+
+thesan = False
+if thesan:
+    file = 'cat.hdf5'
+    obvs_f_esc_keys, obvs_log_f_esc_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=0, obvs=True, eps=False)
+    obvs_n_esc_keys, obvs_log_n_esc_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, eps=False)
+
 log_vars = [obvs_log_f_esc_vars, obvs_log_n_esc_vars]
 keys = [obvs_f_esc_keys, obvs_n_esc_keys]
 print(keys)
+
 
 def round_to_error(value, error):
     if error == 0:
@@ -87,19 +114,25 @@ def round_to_error(value, error):
     format_str = f"{{:.{-order}f}}"
     return format_str.format(rounded_value), format_str.format(rounded_error)
 
+
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
+mpl.rcParams.update({'font.size': 18})
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
+
+# sorts the data by redshift for plotting
+sorted_indices = np.argsort(obvs_redshift)
 
 for i_1 in range(len(axes)):
 
     x = [obvs_log_f_esc_vars[4], obvs_log_f_esc_vars[3]][i_1]
     x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
     x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
-    x_range = ([-31, -13], [5, 13])[i_1]
+    x_range = (([-28, -13], [5, 12])[i_1], ([-24, -14], [6, 11])[i_1])[histogram]
 
     for i_2 in range(len(axes)):
         print((i_1, i_2))
+        ax = axes[i_2, i_1]
+        y_range = (([-3.5, -0.5], [48, 55])[i_2], ([-3.25, -0.75], [48.5, 54.5])[i_2])[histogram]
 
         # each row contains the data for a single galaxy
         X = np.transpose(log_vars[i_2])
@@ -141,24 +174,6 @@ for i_1 in range(len(axes)):
         x_err_high = [np.abs(obvs_uv_mag_high_error), np.abs(obvs_star_mass_high_error)][i_1]
         x_err_sym = (x_err_low + x_err_high) / 2
 
-        error_bars = axes[i_2][i_1].errorbar(x, y,
-                                             xerr=(x_err_low, x_err_high),
-                                             yerr=y_err,
-                                             fmt='none', ecolor=(0.8, 0.8, 0.8, 0.8),
-                                             elinewidth=0.4, zorder=2)
-        z = obvs_redshift
-        sorted_indices = np.argsort(z)
-        scatter = axes[i_2][i_1].scatter(x[sorted_indices], y[sorted_indices], alpha=0.9,
-                                         c=z[sorted_indices], cmap='inferno', s=5, zorder=3,
-                                         #vmin=3, vmax=10
-                                         )
-
-        y_range = ([-3.5, -0.5], [48, 54])[i_2]
-        axes[i_2][i_1].set_ylabel(f_or_n_str)
-        axes[i_2][i_1].set_xlabel(x_str)
-        axes[i_2][i_1].set_xlim(x_range)
-        axes[i_2][i_1].set_ylim(y_range)
-
         if least_squares:
             # Fit using Weighted Least Squares Regression, accounting only for y errors
             def linear_1var(X, a, b):
@@ -191,37 +206,108 @@ for i_1 in range(len(axes)):
             x_fit = np.linspace(x_range[0], x_range[1], 100)
             y_fit = linear_1var((a, b), x_fit)
 
-        # plot the best fit line
-        fit = axes[i_2][i_1].plot(x_fit, y_fit, c='teal', alpha=0.8, zorder=4)
-        # Add confidence bands (regions of possible fit based on parameter errors)
-        n_std = 5
-        y_upper = np.zeros_like(x_fit)
-        y_lower = np.zeros_like(x_fit)
-        for i, xi in enumerate(x_fit):
-            x_vec = np.array([xi, 1])
-            var_y = x_vec @ pcov @ x_vec
-            std_error = np.sqrt(var_y)
-            y_upper[i] = y_fit[i] + n_std * std_error
-            y_lower[i] = y_fit[i] - n_std * std_error
-        axes[i_2][i_1].fill_between(x_fit, y_lower, y_upper, color='teal', alpha=0.4, zorder=1,
-                    label='95% Confidence Band')
+        if residuals:
+            # plots the residual scatter points
+            scatter = ax.scatter(x[sorted_indices], y[sorted_indices] - linear_1var((a,b ), x[sorted_indices]), alpha=0.9,
+                                            c=obvs_redshift[sorted_indices], cmap='viridis', s=1, zorder=3,
+                                            vmin=3, vmax=9
+                                            )
+            # adds a horizontal line at y=0
+            fit = ax.axhline(0, c='teal', alpha=0.8, zorder=4)
+        
+            # seperates the galaxies into bins of x with each containing equal numbers of galaxies
+            nbins = 25
+            bins = np.quantile(x, np.linspace(0, 1, nbins + 1))
+            bin_indices = np.digitize(x, bins)
+            x_medians, y_medians = ([], [])
+            y_16th, y_84th = ([], [])
+            for i in range(1, len(bins)):
+                bin_mask = bin_indices == i
+                x_medians.append(np.median(x[bin_mask]))
+                y_medians.append(np.median(y[bin_mask]))
+                y_16th.append(np.percentile(y[bin_mask], 16))
+                y_84th.append(np.percentile(y[bin_mask], 84))
+            
+            # plots the median of x against the median of residuals for each bin
+            ax.plot(x_medians, np.array(y_medians) - linear_1var((a, b), np.array(x_medians)), 
+                    c='r', linewidth=3, alpha=0.8, label="median residual", zorder=4)
+            ax.fill_between(x_medians, np.array(y_16th) - linear_1var((a, b), np.array(x_medians)),
+                            np.array(y_84th) - linear_1var((a, b), np.array(x_medians)),
+                            color='r', alpha=0.2, label="16th-84th percentile", zorder=4)
 
-        a_str, a_err_str = round_to_error(a, a_err)
-        b_str, b_err_str = round_to_error(b, b_err)
-        fit_label = f'{f_or_n_str_no_unit} = ({a_str}$\pm${a_err_str}) {x_str_no_unit} + ({b_str}$\pm${b_err_str})'
-        axes[i_2][i_1].text(0.1, 0.03, fit_label, ha='left', va='bottom',
-                            transform=axes[i_2][i_1].transAxes, fontsize=12)
+        else:
+            if not histogram:
+                # plots the error bars and the scatter points
+                error_bars = ax.errorbar(x[sorted_indices], y[sorted_indices],
+                                            xerr=(x_err_low[sorted_indices], x_err_high[sorted_indices]),
+                                            yerr=y_err[sorted_indices], fmt='none',
+                                            ecolor=(0.7, 0.7, 0.7, 1), # RGBAlpha
+                                            elinewidth=0.2, zorder=2, rasterized=True)
+                
+                scatter = ax.scatter(x[sorted_indices], y[sorted_indices], alpha=0.9, c=obvs_redshift[sorted_indices],
+                                     cmap='inferno', s=1, zorder=3, rasterized=True,
+                                     vmin=3, vmax=9
+                                     )
 
-        axes[i_2][i_1].set_box_aspect(1)
-        # add grid lines in background of graph
-        axes[i_2][i_1].grid(True, alpha=0.6, linestyle='--')
-        axes[i_2][i_1].set_axisbelow(True)
+            else:
+                # creates 2D histogram instead of scatter plot
+                nbins = 50
+                x_bins = np.linspace(x_range[0], x_range[1], nbins+1)
+                y_bins = np.linspace(y_range[0], y_range[1], nbins+1)
+                hist, xedges, yedges = np.histogram2d(x, y, bins=[x_bins, y_bins])
+                hist = hist.T
+                # hist = np.ma.masked_where(hist == 0, hist)
+                # hist = np.log10(hist)
+                hist[hist == -np.inf] = 0
+                h_plot = ax.imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
+                               origin='lower', aspect='auto', cmap='magma', interpolation='nearest', zorder=1)
 
-fig.tight_layout(w_pad=5)
-cbar = fig.colorbar(scatter, ax=axes, orientation='vertical', aspect=30)
-cbar.set_label("$z$")
+            # Plots the best fit line with confidence bands (regions of possible fit based on parameter errors)
+            fit = ax.plot(x_fit, y_fit, c='teal', linewidth=2, alpha=0.8, zorder=4)
+
+            n_std = 5
+            y_upper = np.zeros_like(x_fit)
+            y_lower = np.zeros_like(x_fit)
+            for i, xi in enumerate(x_fit):
+                x_vec = np.array([xi, 1])
+                var_y = x_vec @ pcov @ x_vec
+                std_error = np.sqrt(var_y)
+                y_upper[i] = y_fit[i] + n_std * std_error
+                y_lower[i] = y_fit[i] - n_std * std_error
+            ax.fill_between(x_fit, y_lower, y_upper, color='teal', alpha=0.4, zorder=4,
+                        label='95% Confidence Band')
+            
+            # adding fit parameters as text to the graph
+            a_str, a_err_str = round_to_error(a, a_err)
+            b_str, b_err_str = round_to_error(b, b_err)
+            fit_label = f'{f_or_n_str_no_unit} = ({a_str}$\pm${a_err_str}) {x_str_no_unit} + ({b_str}$\pm${b_err_str})'
+            ax.text(0.05, 0.025, fit_label, ha='left', va='bottom',
+                    transform=ax.transAxes, fontsize=14, color=('black', 'white')[histogram])
+        
+            # axes setup
+            if i_2 == 1:
+                ax.set_xlabel(x_str)
+            if i_1 == 0:
+                ax.set_ylabel(f_or_n_str, labelpad=10)
+            ax.set_xlim(x_range)
+            ax.set_ylim(y_range)
+            ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+            
+        ax.set_box_aspect(1)
+        ax.grid(False)
+        # ax.grid(True, alpha=0.6, linestyle='--')
+        # ax.set_axisbelow(True)
+
+fig.align_ylabels([axes[0, 0], axes[1, 0]])
+fig.tight_layout()
+if not histogram:
+    cbar = fig.colorbar(scatter, ax=axes, orientation='vertical', aspect=30, pad=0.03)
+    cbar.set_label("$z$", labelpad=10)
+else:
+    cbar = fig.colorbar(h_plot, ax=axes, orientation='vertical', aspect=30, pad=0.03)
+    cbar.set_label("Number of Galaxies in Bin", labelpad=5)
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "png")[histogram], bbox_inches='tight', dpi=500)
 plt.show()

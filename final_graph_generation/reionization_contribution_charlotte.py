@@ -10,12 +10,14 @@ from scipy.integrate import quad
 import numpy as np
 from astropy.io import fits
 from scipy import odr
+import csv
+from matplotlib.ticker import MaxNLocator
 
 # 0 for f_esc, 1 for n_esc
 f_or_n = 1
 
 # False for plotting total N_esc against redshift and True for plotting mass and magnitude bands
-split_contribution = False
+split_contribution = True
 
 folder = "final_rf_model/"
 file5 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
@@ -27,6 +29,7 @@ with fits.open("prosp_properties_GOODSS.fits") as hdul2:
     data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
 obvs_data = {key: np.concatenate([data1[key], data2[key]]) for key in data1}
 
+ID = obvs_data['ID']
 obvs_redshift = obvs_data['z']
 obvs_star_mass = 10**(np.array(obvs_data['log(Mstar)']).astype('float64'))
 obvs_sfr10 = np.array(obvs_data['SFR10'])
@@ -53,8 +56,22 @@ obvs_log_f_esc_vars[0] = log10_offset10.astype('float32')
 obvs_log_f_esc_vars[4] = obvs_uv_mag.astype('float32')
 obvs_log_n_esc_vars[3] = obvs_uv_mag.astype('float32')
 
-# removes any rows that have zero, nan or infinity for the vars
-bad_indices = []
+# Creates a list of bad IDs for the diffraction spike galaxies 
+with fits.open("masked_objects_gn.fits") as hdul1:
+    bad_data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
+with fits.open("masked_objects_gs.fits") as hdul2:
+    bad_data2 = {name: hdul2[1].data[name] for name in hdul2[1].data.columns.names}
+bad_ID = np.array(bad_data1['ID'].tolist() + bad_data2['ID'].tolist())
+bad_indices = np.where(np.isin(ID, bad_ID))[0].tolist()
+print(f"diffraction spike rows: {len(bad_indices)}")
+
+# removes any rows that have zero, nan, or infinity for the vars; signal to noise SN(F444W) < 3; and red_chi2(JWST) > 1
+b_i = [index for index, val in enumerate(list(obvs_data['SN(F444W)'])) if val < 3]
+print(f"SN(F444W) < 3 rows: {len(b_i)}")
+bad_indices += b_i
+b_i += [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 1]
+print(f"red_chi2(JWST) > 1 rows: {len(b_i)}")
+bad_indices += b_i
 for i in range(len(obvs_f_esc_vars)):
     b_i = [index for index, val in enumerate(list((obvs_f_esc_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or val == np.nan)]
@@ -343,44 +360,135 @@ if not split_contribution:
 
     plt.style.use('./MNRAS_Style.mplstyle')
     mpl.rcParams.update({'font.size': 20})
-    fig, ax = plt.subplots(figsize=(16, 8))
+    fig, ax = plt.subplots(figsize=(20, 8))
 
+    # plot critical N_esc curves
     z_space = np.linspace(1, 11, 100)
     for C in [1, 3, 10]:
         ax.plot(z_space, np.log10(critical(z_space, C)), c='grey', zorder=1)
-        text_z = 2
-        ax.text(text_z, np.log10(critical(text_z, C))-0.08, f'$C = {C}$',
-                rotation=40, color='grey')
+        text_z = 9.5
+        ax.text(text_z, np.log10(critical(text_z, C))-0.12, f'$C = {C}$',
+                rotation=12, color='grey')
     ax.fill_between(z_space, np.log10(critical(z_space, 1)), np.log10(critical(z_space, 10)),
                     color='grey', alpha=0.2, zorder=1, label='$\dot{N}_\mathrm{ion}$ Critical')
     
-    #log_uv_errors  = log_errors(std_uv_N_escs, uv_N_escs)
-    ax.errorbar(uv_redshifts, log_uv_N_escs, yerr=(log_uv_err_low, log_uv_err_high),
-                fmt='none', c='royalblue', elinewidth=2, capsize=5, zorder=3)
-    ax.plot(uv_redshifts, log_uv_N_escs, linestyle='--', c='royalblue', linewidth=3, zorder=2)
-    ax.scatter(uv_redshifts, log_uv_N_escs, s=100, c='royalblue', edgecolors='black', zorder=4,
-            label='$\dot{N}_\mathrm{ion}$ UV Magnitude Integration')
+    constraint_colours = {
+    "kuhlen":  "#9EC9E2",  # pale blue
+    "becker":  "#4F81BD",  # medium blue
+    "gaikwad": "#1F4E79",  # dark navy
+    }
+
+    # plot observational constraints on N_ion from Kuhlen (2012)
+    constraints_folder = 'other_paper_graphs/'
+    kuhlen_2012 = np.zeros((12, 4))
+    kuhlen_2012_files = ['kuhlen_2012_Nion_values.csv',
+                          'kuhlen_2012_Nion_errors_low.csv',
+                          'kuhlen_2012_Nion_errors_high.csv']
+    for i in range(len(kuhlen_2012_files)):
+        with open(constraints_folder + kuhlen_2012_files[i], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            rows = [row for row in reader]
+            if i == 0:
+                kuhlen_2012[:,0] = np.array([row[0] for row in rows]).astype('float64')
+                kuhlen_2012[:,1] = np.array([row[1] for row in rows]).astype('float64') + 51
+            else:
+                kuhlen_2012[:,i+1] = np.array([row[1] for row in rows]).astype('float64') + 51
+    # ax.errorbar(kuhlen_2012[:,0], kuhlen_2012[:,1],
+    #             yerr=(kuhlen_2012[:,1] - kuhlen_2012[:,2], kuhlen_2012[:,3] - kuhlen_2012[:,1]),
+    #             fmt='none', c='black', elinewidth=2, capsize=5, zorder=3')
+    # ax.scatter(kuhlen_2012[:,0], kuhlen_2012[:,1], s=50, marker='^', c='black', edgecolors='black',
+    #            zorder=4, label='kuhlen et al. (2012)')
+    ax.fill_between(kuhlen_2012[:,0], kuhlen_2012[:,2], kuhlen_2012[:,3],
+                    color=constraint_colours["kuhlen"], alpha=0.7, zorder=2, label='Kuhlen (2012)')
+
+    # plot observational constraints on N_ion from Becker (2013)
+    constraints_folder = 'other_paper_graphs/'
+    becker_2013 = np.zeros((4, 4))
+    becker_2013_files = ['becker_2013_Nion_values.csv',
+                          'becker_2013_Nion_errors_low.csv',
+                          'becker_2013_Nion_errors_high.csv']
+    for i in range(len(becker_2013_files)):
+        with open(constraints_folder + becker_2013_files[i], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            rows = [row for row in reader]
+            if i == 0:
+                becker_2013[:,0] = np.array([row[0] for row in rows]).astype('float64')
+                becker_2013[:,1] = np.array([row[1] for row in rows]).astype('float64') + 51
+            else:
+                becker_2013[:,i+1] = np.array([row[1] for row in rows]).astype('float64') + 51
+    # ax.errorbar(becker_2013[:,0], becker_2013[:,1],
+    #             yerr=(becker_2013[:,1] - becker_2013[:,2], becker_2013[:,3] - becker_2013[:,1]),
+    #             fmt='none', c='black', elinewidth=2, capsize=5, zorder=3)
+    # ax.scatter(becker_2013[:,0], becker_2013[:,1], s=50, marker='o', c='black', edgecolors='black',
+    #            zorder=4, label='Becker et al. (2013)')
+    ax.fill_between(becker_2013[:,0], becker_2013[:,2], becker_2013[:,3],
+                    color=constraint_colours["becker"], alpha=0.6, zorder=2, label='Becker (2013)')
+
+    # plot observational constraints on N_ion from Gaikwad (2023)
+    constraints_folder = 'other_paper_graphs/'
+    gaikwad_2023 = np.zeros((12, 4))
+    gaikwad_2023_files = ['gaikwad_2023_Nion_values.csv',
+                          'gaikwad_2023_Nion_errors_low.csv',
+                          'gaikwad_2023_Nion_errors_high.csv']
+    for i in range(len(gaikwad_2023_files)):
+        with open(constraints_folder + gaikwad_2023_files[i], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            rows = [row for row in reader]
+            if i == 0:
+                gaikwad_2023[:,0] = np.array([row[0] for row in rows]).astype('float64')
+                gaikwad_2023[:,1] = np.array([row[1] for row in rows]).astype('float64')
+            else:
+                gaikwad_2023[:,i+1] = np.array([row[1] for row in rows]).astype('float64')
+    # ax.errorbar(gaikwad_2023[:,0], gaikwad_2023[:,1],
+    #             yerr=(gaikwad_2023[:,1] - gaikwad_2023[:,2], gaikwad_2023[:,3] - gaikwad_2023[:,1]),
+    #             fmt='o', c='black', elinewidth=2, capsize=5, zorder=3)
+    # ax.scatter(gaikwad_2023[:,0], gaikwad_2023[:,1], s=50, marker='*', c='black', edgecolors='black',
+    #            zorder=4, label='Gaikwad et al. (2023)')
+    ax.fill_between(gaikwad_2023[:,0], gaikwad_2023[:,2], gaikwad_2023[:,3],
+                    color=constraint_colours["gaikwad"], alpha=0.5, zorder=2, label='Gaikwad (2023)')
+    
+    # plot Charlotte's N_ion integrations for her f_esc = 10% and f_esc Chisholm (2022) prescriptions
+    charlotte_z = [3.5, 4.5, 5.5, 6.5, 7.5, 8.5]
+    N_ion_f_esc_10 = [51.23478634, 50.85474357, 50.60201125, 50.57420019, 50.34034352, 49.99205213]
+    N_ion_f_esc_chisholm = [50.76232333, 50.52949668, 50.52709877, 50.61663425, 50.36362092, 49.44427493]
+    ax.plot(charlotte_z, N_ion_f_esc_10, linestyle=':', c='gold', linewidth=3, zorder=2)
+    ax.scatter(charlotte_z, N_ion_f_esc_10, s=150, marker='^', c='gold', edgecolors='black', zorder=3,
+            label='Simmonds (2024b), $f_\mathrm{esc} = 10\%$')
+    ax.plot(charlotte_z, N_ion_f_esc_chisholm, linestyle=':', c='limegreen', linewidth=3, zorder=2)
+    ax.scatter(charlotte_z, N_ion_f_esc_chisholm, s=150, marker='v', c='limegreen', edgecolors='black', zorder=3,
+            label='Simmonds (2024b), $f_\mathrm{esc}$ Chisholm (2022)')
 
     #log_m_errors = log_errors(std_m_N_escs, m_N_escs)
     ax.errorbar(m_redshifts, log_m_N_escs, yerr=(log_m_err_low, log_m_err_high),
                 fmt='none', c='darkorange', elinewidth=2, capsize=5, zorder=3)
-    ax.plot(m_redshifts, log_m_N_escs, linestyle='--', c='darkorange', linewidth=3, zorder=2)
-    ax.scatter(m_redshifts, log_m_N_escs, s=100, c='darkorange',  edgecolors='black', zorder=4,
+    ax.plot(m_redshifts, log_m_N_escs, linestyle='--', c='darkorange', linewidth=3, zorder=4)
+    ax.scatter(m_redshifts, log_m_N_escs, s=150, c='darkorange',  edgecolors='black', zorder=5,
             label='$\dot{N}_\mathrm{ion}$ Stellar Mass Integration')
+    
+    #log_uv_errors = log_errors(std_uv_N_escs, uv_N_escs)
+    ax.errorbar(uv_redshifts, log_uv_N_escs, yerr=(log_uv_err_low, log_uv_err_high),
+                fmt='none', c='darkorchid', elinewidth=2, capsize=5, zorder=4)
+    ax.plot(uv_redshifts, log_uv_N_escs, linestyle='--', c='darkorchid', linewidth=3, zorder=2)
+    ax.scatter(uv_redshifts, log_uv_N_escs, s=150, c='darkorchid', edgecolors='black', zorder=5,
+            label='$\dot{N}_\mathrm{ion}$ UV Magnitude Integration')
 
     ax.set_xlabel("$z$")
     ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
     ax.yaxis.set_label_coords(-0.075, 0.5)
-    ax.set_xlim((1, 11))
-    ax.set_ylim((48.7, 51.2))
-    ax.grid(True, alpha=0.8, linestyle='--')
-    ax.set_axisbelow(True)
-    for line in ax.get_xgridlines() + ax.get_ygridlines():
-        line.set_zorder(0)
-    legend = ax.legend(fontsize=18, loc='lower center', bbox_to_anchor=(0.5, 0.025))
-    legend.get_frame().set_edgecolor('black')
-    legend.get_frame().set_boxstyle('Square')
-    legend.get_frame().set_alpha(1.0)
+    ax.set_xlim((1.5, 10.5))
+    ax.set_ylim((48.7, 51.7))
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=12, integer=True))
+    ax.grid(False)
+    # ax.grid(True, alpha=0.8, linestyle='--')
+    # ax.set_axisbelow(True)
+    # for line in ax.get_xgridlines() + ax.get_ygridlines():
+    #     line.set_zorder(0)
+    legend = ax.legend(fontsize=18, loc='center left', bbox_to_anchor=(1.05, 0.5), borderaxespad=0)
+    frame = legend.get_frame()
+    frame.set_edgecolor('black')
+    frame.set_boxstyle('Square')
+    frame.set_alpha(0.8)
+    plt.subplots_adjust(right=0.7)
 
 else:
 
@@ -390,12 +498,12 @@ else:
 
     bar_width = 0.25
     offsets = [-bar_width, 0, bar_width]
-    uv_labels = ('$-17 < M_\mathrm{UV} \leq -14$',
+    uv_labels = ('$M_\mathrm{UV} < -17$',
                  '$-20 < M_\mathrm{UV} \leq -17$',
-                 '$-30 < M_\mathrm{UV} \leq -20$')
-    m_labels = ('$6 \leq \mathrm{log}_{10}(M_*) < 8$',
+                 '$M_\mathrm{UV} \geq -20$')
+    m_labels = ('$\mathrm{log}_{10}(M_*) < 8$',
                 '$8 \leq \mathrm{log}_{10}(M_*) < 10$',
-                '$10 \leq \mathrm{log}_{10}(M_*) < 12$')
+                '$\mathrm{log}_{10}(M_*) \geq 10$')
     uv_colors = ['#66c2a5', '#3288bd', '#5e4fa2']  # Teal, Medium Blue, Deep Blue
     m_colors = ['#fdb863', '#e66101', '#b2182b']  # Gold, Orange, Crimson
 

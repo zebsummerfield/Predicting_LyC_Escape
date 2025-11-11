@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib as mpl
+from matplotlib.ticker import MaxNLocator
 from functions import *
 
 # 0 for f_esc, 1 for n_esc
@@ -22,15 +23,16 @@ keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=ob
 f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
               '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
 log_target = [log_f_esc, log_n_esc][f_or_n]
+gas_mass = 10**log_vars[-8].astype('float64')
+gas_mass = gas_mass / (0.76 / 1.6735575e-24)
+gas_mass = gas_mass / 1.989e33
+log_vars[-8] = np.log10(gas_mass).astype('float32')
+ha_lum = 10**log_vars[-3].astype('float64')
+ha_lum = ha_lum * 5
+log_vars[-3] = np.log10(ha_lum).astype('float32')
 
 y_vars = [log_vars[-10], log_vars[-8], log_vars[-6], log_vars[-4], log_vars[-2]]
 x_vars = [log_vars[-9], log_vars[-7], log_vars[-5], log_vars[-3], log_vars[-1]]
-
-gas_mass = 10**y_vars[1].astype('float64')
-gas_mass = gas_mass / (0.76 / 1.6735575e-24)
-gas_mass = gas_mass / 1.989e33
-y = np.log10(gas_mass)
-y = log_vars[1]
 
 y_strs = ['$\mathrm{SFR}_{10} \, [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
           '$M_\mathrm{gas} \, [\mathrm{M}_\odot]$',
@@ -44,8 +46,8 @@ x_strs = ['$\mathrm{SFR}_{100} \, [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
           '$R_{M_*} \, [\mathrm{kpc}]$']
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
-fig, axes = plt.subplots(2, 3, figsize=(16, 9))
+mpl.rcParams.update({'font.size': 16})
+fig, axes = plt.subplots(2, 3, figsize=(15, 8))
 axes = axes.flatten()
 fig.delaxes(axes[-1])
 
@@ -77,6 +79,8 @@ for index in range(5):
     yrange = max(y) - min(y)
     ax.set_xlim(min(x) - xrange * 0.05, max(x) + xrange * 0.05)
     ax.set_ylim(min(y) - yrange * 0.05, max(y) + yrange * 0.05)
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
 
 
     # contour overlay of the histogram
@@ -108,7 +112,7 @@ for index in range(5):
     angle_str = f"{round(theta * 180 / np.pi, 1)}"
     angle_error_str = f"{round(theta_err * 180 / np.pi, 1)}"
     
-    angle_label = f"$\\theta$={angle_str}$\pm${angle_error_str}$^\circ$"
+    angle_label = f"$\\theta = {angle_str}\pm{angle_error_str}^\circ$"
 
     # Step 3: Plot the arrow
     ax.arrow(start[0], start[1], da, db,
@@ -120,14 +124,14 @@ for index in range(5):
             transform=ax.transAxes)
 
     ax.set_box_aspect(1)
-    # add grid lines in background of graph
-    ax.grid(True, alpha=0.6, linestyle='--')
-    ax.set_axisbelow(True)
-    for line in ax.get_xgridlines() + ax.get_ygridlines():
-        line.set_zorder(0)  # lower z-order than image
+    ax.grid(False)
+    # ax.grid(True, alpha=0.6, linestyle='--')
+    # ax.set_axisbelow(True)
+    # for line in ax.get_xgridlines() + ax.get_ygridlines():
+    #     line.set_zorder(0) 
 
-fig.tight_layout(w_pad=3, h_pad=3)
-cbar = fig.colorbar(color_hist, ax=axes, orientation='vertical', aspect=25)
+fig.tight_layout(w_pad=3, h_pad=1)
+cbar = fig.colorbar(color_hist, ax=axes, orientation='vertical', aspect=25, pad=0.03)
 cbar.set_label(f_or_n_str)
 mpl.rcParams['figure.dpi'] = 500
 fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
