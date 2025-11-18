@@ -5,19 +5,20 @@ import joblib
 import json
 from sklearn.metrics import mean_absolute_error
 from functions import *
-from scipy.optimize import curve_fit
 from scipy.integrate import quad
 import numpy as np
 from astropy.io import fits
 from scipy import odr
 import csv
 from matplotlib.ticker import MaxNLocator
+from scipy.interpolate import UnivariateSpline
+import pickle
 
 # 0 for f_esc, 1 for n_esc
 f_or_n = 1
 
 # False for plotting total N_esc against redshift and True for plotting mass and magnitude bands
-split_contribution = True
+split_contribution = False
 
 folder = "final_rf_model/"
 file5 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
@@ -98,7 +99,6 @@ log_star_mass = log_vars[(3, 2)[f_or_n]]
 log_uv_mag = log_vars[(4, 3)[f_or_n]]
 print(keys)
 
-
 X = np.transpose(log_vars)
 # run target prediction using loaded model
 f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$', '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][f_or_n]
@@ -138,9 +138,9 @@ def linear_1var(p, X):
     return a * X + b
 
 
-# form for the number density of galaxies as a function of stellar mass
+# Schechter parameters for the number density of galaxies as a function of stellar mass from Weibel et al. (2024)
 m_redshifts = np.array([4, 5, 6, 7, 8, 9])
-m_alpha_fit = {4: -1.79, 5: -1.86, 6: -1.95, 7: -1.93, 8: -2.16, 9: -2.0}
+m_alpha_fit = {4: -1.79, 5: -1.86, 6: -1.95, 7: -1.93, 8: -2.08, 9: -2.0}
 m_alpha_fit_err = {4: 0.01, 5: 0.03, 6: 0.07, 7: 0.04, 8: 0.19, 9: 0.19}
 log_m_phi_fit = {4: -4.52,5 : -4.07, 6: -4.26, 7: -4.36, 8: -4.86, 9: -4.93}
 log_m_phi_fit_err = {4: 0.13, 5: 0.13, 6: 0.36, 7: 0.05, 8: 0.20, 9: 0.07}
@@ -180,13 +180,13 @@ odr_inst = odr.ODR(data, model, beta0=[0, 0, 0])
 out = odr_inst.run()
 a, b, c = out.beta
 a_err, b_err, c_err = out.sd_beta
-print([a, b, c])
-print([a_err, b_err, c_err])
+print("Stellar mass linear fit parameters:", [a, b, c])
+print("Stellar mass linear fit parameter errors:", [a_err, b_err, c_err])
 
 # integrates over the number density of galaxies multiplied by n_esc as a function of stellar mass to calculate N_esc
 if not split_contribution:
     m_N_escs, m_N_escs_low, m_N_escs_high = [np.zeros(len(m_redshifts)) for _ in range(3)]
-    log_mass_min, log_mass_max = 6, 12
+    log_mass_min, log_mass_max = 6, 20
     mass_min, mass_max = 10**log_mass_min, 10**log_mass_max
 
     # Monte-Carlo error propagation for N_esc including a b c covariance and Schechter param errors
@@ -245,7 +245,7 @@ else:
         split_m_N_escs.append(m_N_escs)
 
 
-# form for the number density of galaxies as a function of UV magnitude
+# Schechter parameters for the number density of galaxies as a function of UV magnitude from Bouwens et al. (2021)
 uv_redshifts = np.array([2.1, 2.9, 3.8, 4.9, 5.9, 6.8, 7.9, 8.9, 10.2])
 uv_alpha_fit = {2.1: -1.52, 2.9: -1.61, 3.8: -1.69, 4.9: -1.74, 5.9: -1.93, 6.8: -2.06,
                 7.9: -2.23, 8.9: -2.33, 10.2: -2.38}
@@ -259,6 +259,27 @@ uv_mag_fit = {2.1: -20.28, 2.9: -20.87, 3.8: -20.93, 4.9: -21.10, 5.9: -20.93, 6
               7.9: -20.93, 8.9: -21.15, 10.2: -21.19}
 uv_mag_fit_err = {2.1: 0.09, 2.9: 0.09, 3.8: 0.08, 4.9: 0.11, 5.9: 0.09, 6.8: 0.13,
                   7.9: 0.28, 8.9: 0.28, 10.2: 0.28}
+
+# extra Schechter parameters at z=9.8 and z=12.8 from Whitler et al. (2025)
+jwst_funcs = False
+extra = {
+    9.8: {"alpha": -2.36, "alpha_err": 0.19,
+          "phi": 0.10070, "phi_err": 0.06220,
+          "mag": -20.32, "mag_err": 0.48},
+    12.8: {"alpha": -2.23, "alpha_err": 0.31,
+           "phi": 0.04083, "phi_err": 0.01611,
+           "mag": -20.54, "mag_err": 0.48}
+}
+if jwst_funcs:
+    for z, vals in extra.items():
+        uv_redshifts = np.append(uv_redshifts, z)
+        uv_alpha_fit[z] = vals["alpha"]
+        uv_alpha_fit_err[z] = vals["alpha_err"]
+        uv_phi_fit[z] = vals["phi"]
+        uv_phi_fit_err[z] = vals["phi_err"]
+        uv_mag_fit[z] = vals["mag"]
+        uv_mag_fit_err[z] = vals["mag_err"]
+
 def schechter_uv(mag, uv_alpha_fit, uv_phi_fit, uv_mag_fit):
     uv_phi_fit = uv_phi_fit * 1e-3
     k = 10 ** (0.4 * (uv_mag_fit - mag))
@@ -286,13 +307,13 @@ out = odr_inst.run()
 a, b, c = out.beta
 a_err, b_err, c_err = out.sd_beta
 pcov = out.cov_beta
-print([a, b, c])
-print([a_err, b_err, c_err])
+print("UV magnitude linear fit parameters:", [a, b, c])
+print("UV magnitude linear fit parameter errors:", [a_err, b_err, c_err])
 
 # integrates over the number density of galaxies multiplied by n_esc as a function of stellar mass to calculate N_esc
 if not split_contribution:
     uv_N_escs, uv_N_escs_low, uv_N_escs_high = [np.zeros(len(uv_redshifts)) for _ in range(3)]
-    mag_min, mag_max = -30, -14
+    mag_min, mag_max = -50, -10
 
     # Monte-Carlo error propagation for N_esc including a b c covariance and UV Schechter param errors
     n_mc = 1000
@@ -334,6 +355,28 @@ if not split_contribution:
     log_uv_N_escs = np.log10(uv_N_escs)
     log_uv_err_low = log_uv_N_escs - np.log10(uv_N_escs_low)
     log_uv_err_high = np.log10(uv_N_escs_high) - log_uv_N_escs
+    weights = 2 / (log_uv_err_low + log_uv_err_high)
+
+
+    # interpolates N_ion as a function of redshift using a polynomial fit and a spline fit
+    poly_coeffs, poly_cov = np.polyfit(1 + uv_redshifts, log_uv_N_escs, deg=3, w=weights, cov=True)
+    poly_coeffs_errors = np.sqrt(np.diag(poly_cov))
+    polynomial = np.poly1d(poly_coeffs)
+    mixed_redshifts = (range(len(uv_redshifts)), [0, 1, 2, 3, 4, 5, 9, 10])[jwst_funcs]
+    smooth = (0.2, 0)[jwst_funcs]
+    spline = UnivariateSpline(uv_redshifts[mixed_redshifts], log_uv_N_escs[mixed_redshifts],
+                              w=weights[mixed_redshifts], k=3, s=smooth)
+    spline_high = UnivariateSpline(uv_redshifts[mixed_redshifts], log_uv_N_escs[mixed_redshifts] + log_uv_err_high[mixed_redshifts],
+                                   w=weights[mixed_redshifts], k=3, s=smooth)
+    spline_low = UnivariateSpline(uv_redshifts[mixed_redshifts], log_uv_N_escs[mixed_redshifts] - log_uv_err_low[mixed_redshifts],
+                                  w=weights[mixed_redshifts], k=3, s=smooth)
+    with open("final_graph_generation/uv_N_ion_spline.pkl", "wb") as f:
+        pickle.dump(spline, f)
+    with open("final_graph_generation/uv_N_ion_spline_high.pkl", "wb") as f:
+        pickle.dump(spline_high, f)
+    with open("final_graph_generation/uv_N_ion_spline_low.pkl", "wb") as f:
+        pickle.dump(spline_low, f)
+    
 # integrates over the number density of galaxies multiplied by n_esc for different magnitude bands
 else:
     uv_bands = [(-17, -14), (-20, -17), (-30, -20)]
@@ -471,6 +514,11 @@ if not split_contribution:
     ax.plot(uv_redshifts, log_uv_N_escs, linestyle='--', c='darkorchid', linewidth=3, zorder=2)
     ax.scatter(uv_redshifts, log_uv_N_escs, s=150, c='darkorchid', edgecolors='black', zorder=5,
             label='$\dot{N}_\mathrm{ion}$ UV Magnitude Integration')
+    
+    # ax.plot(np.linspace(1.5, 10.5, 100), polynomial(np.linspace(1.5, 10.5, 100)),
+    #         linestyle='-', c='black', linewidth=2, zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Polynomial Fit')
+    ax.plot(np.linspace(1.5, 10.5, 100), spline(np.linspace(1.5, 10.5, 100)), alpha = 0.8,
+            linestyle='-', c='black', linewidth=2, zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Spline Fit')
 
     ax.set_xlabel("$z$")
     ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")

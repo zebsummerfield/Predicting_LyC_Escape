@@ -89,17 +89,16 @@ obvs_uv_mag_high_error = np.delete(np.array(obvs_data['M1500int_ehi']), bad_indi
 obvs_uv_mag_low_error = np.delete(np.array(obvs_data['M1500int_elo']), bad_indices)
 print(f'rows remaining: {len(obvs_redshift)}')
 
-
-thesan = False
-if thesan:
-    file = 'cat.hdf5'
-    obvs_f_esc_keys, obvs_log_f_esc_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=0, obvs=True, eps=False)
-    obvs_n_esc_keys, obvs_log_n_esc_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, eps=False)
-
 log_vars = [obvs_log_f_esc_vars, obvs_log_n_esc_vars]
 keys = [obvs_f_esc_keys, obvs_n_esc_keys]
 print(keys)
 
+def linear_1var(p, X):
+    a, b = p
+    return a * X + b
+
+def curve_fit_func(X, a, b):
+    return linear_1var((a, b), X)
 
 def round_to_error(value, error):
     if error == 0:
@@ -176,22 +175,12 @@ for i_1 in range(len(axes)):
 
         if least_squares:
             # Fit using Weighted Least Squares Regression, accounting only for y errors
-            def linear_1var(X, a, b):
-                return a * X + b
-            
-            popt, pcov = curve_fit(linear_1var, x, y, sigma=y_err, absolute_sigma=True)
+            popt, pcov = curve_fit(curve_fit_func, x, y, sigma=y_err, absolute_sigma=True)
             a, b = popt
             a_err, b_err = np.sqrt(np.diag(pcov))
 
-            x_fit = np.linspace(x_range[0], x_range[1], 100)
-            y_fit = linear_1var(x_fit, a, b)
-
         else:
             # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
-            def linear_1var(p, X):
-                a, b = p
-                return a * X + b
-            
             x_err_median = np.nanmedian(x_err_sym[x_err_sym > 0]) * 1e-6
             x_err_sym[x_err_sym <= 0] = x_err_median
             model = odr.Model(linear_1var)
@@ -203,12 +192,12 @@ for i_1 in range(len(axes)):
             a_err, b_err = out.sd_beta 
             pcov = out.cov_beta
 
-            x_fit = np.linspace(x_range[0], x_range[1], 100)
-            y_fit = linear_1var((a, b), x_fit)
+        x_fit = np.linspace(x_range[0], x_range[1], 100)
+        y_fit = linear_1var((a, b), x_fit)
 
         if residuals:
             # plots the residual scatter points
-            scatter = ax.scatter(x[sorted_indices], y[sorted_indices] - linear_1var((a,b ), x[sorted_indices]), alpha=0.9,
+            scatter = ax.scatter(x[sorted_indices], y[sorted_indices] - linear_1var((a, b), x[sorted_indices]), alpha=0.9,
                                             c=obvs_redshift[sorted_indices], cmap='viridis', s=1, zorder=3,
                                             vmin=3, vmax=9
                                             )

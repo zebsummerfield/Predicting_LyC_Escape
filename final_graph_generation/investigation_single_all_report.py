@@ -13,7 +13,6 @@ obvs = False
 folder = "final_graph_generation/"
 file = 'cat.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=False)
-log_y = [log_f_esc, log_n_esc][f_or_n]
 f_or_n_str = ['$\mathrm{Log}_{10}(f_{\mathrm{esc}})$',
                 '$\mathrm{Log}_{10}(\dot{n}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]
 y_limits = ((-5.5, 0), (45, 54))[f_or_n]
@@ -55,7 +54,11 @@ if f_or_n == 1:
 
 for index in range((15, 9)[f_or_n]):
     log_x = log_vars[index]
+    valid = np.isfinite(log_x)
+    log_x = log_x[valid]
+    log_y = [log_f_esc, log_n_esc][f_or_n][valid]
     ax = axes[index]
+
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
     nbins = 100
     hist, xedges, yedges = np.histogram2d(log_x, log_y, bins=nbins, range=((min(log_x), max(log_x)), y_limits))
@@ -72,7 +75,7 @@ for index in range((15, 9)[f_or_n]):
 
     # seperates the galaxies into bins of variable log_x with each containing equal numbers of galaxies 
     nbins = 50
-    bins = np.quantile(log_x, np.linspace(0, 1, nbins + 1))
+    bins = np.unique(np.quantile(log_x, np.linspace(0, 1, nbins + 1)))
     bin_indices = np.digitize(log_x, bins)
     x_medians, y_medians = ([], [])
     y_16th, y_84th = ([], [])
@@ -84,9 +87,12 @@ for index in range((15, 9)[f_or_n]):
         y_84th.append(np.percentile(log_y[bin_mask], 84))
 
     # plots the median of log_x against the median of log_y for each bin
+    # print(index)
+    # if len(x_medians) == 0:
+    #     import pdb; pdb.set_trace()
     ax.plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$")
     ax.fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
-    ax.set_xlim(min(x_medians), max(x_medians))
+    ax.set_xlim(np.min(x_medians), np.max(x_medians))
     ax.set_ylim(y_limits)
     ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
     ax.set_box_aspect(1)

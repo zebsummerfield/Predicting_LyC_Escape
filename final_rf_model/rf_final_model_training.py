@@ -14,7 +14,7 @@ folder = "final_rf_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
+f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'

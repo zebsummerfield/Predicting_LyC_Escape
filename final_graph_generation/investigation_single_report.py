@@ -11,7 +11,7 @@ obvs = False
 
 folder = "final_graph_generation/"
 file = 'cat.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=False)
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=True)
 
 print(keys)
 x_index = 7  # index of M_UV in log_vars
