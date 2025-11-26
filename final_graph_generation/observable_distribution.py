@@ -14,10 +14,11 @@ f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 # True to split the data into redshift bins
-split_redshift = True
+split_redshift = False
 
 folder = "final_graph_generation/"
 file = 'cat.hdf5'
+# file = 'cat_dusttestszeb.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=True,
                                                     add_vars=['redshift_full', 'stellar_mass_full', 'sfr_full_50'])
 ssfr50 = ssfr_func(10**log_vars[-1], 10**log_vars[-2])

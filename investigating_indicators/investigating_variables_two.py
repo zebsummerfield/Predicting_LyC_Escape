@@ -20,7 +20,8 @@ b = [0.041, 0.042]
 u = [2.64, 2.57]
 
 folder = "investigating_indicators/"
-file = 'cat.hdf5'
+# file = 'cat.hdf5'
+file = 'cat_dusttestszeb.hdf5'
 
 with h5py.File(file, 'r') as hdf:
     with open(folder+"keys.txt", "w") as k:
@@ -57,8 +58,8 @@ with h5py.File(file, 'r') as hdf:
                      uv_obs/uv_lum, ha_size/uv_size])
 
     #variables we are investigating for an f_esc relationship
-    x = star_size
-    y = sfr_size
+    x = np.array(hdf['uv_lum_int_fdust_40_full'])
+    y = np.array(hdf['uv_lum_obs_fdust_40_full'])
 
     # removes any rows that have zero, nan or infinity for the x, y, ssfr10, f_esc and n_esc
     for i in range(len(np.concatenate(([x, y], [f_esc, n_esc])))):
@@ -82,7 +83,7 @@ with h5py.File(file, 'r') as hdf:
     y = np.log10(y).astype('float32')
 
 matplotlib.rcParams.update({'font.size': (12, 10)[c]})
-fig, axes = plt.subplots(2, 2, figsize=((14, 14), (8, 8))[c], gridspec_kw={'height_ratios': [1, 1.6]})
+fig, axes = plt.subplots(2, 2, figsize=((12, 12), (8, 8))[c], gridspec_kw={'height_ratios': [1, 1.6]})
 
 # seperates the galaxies into bins of variable x with each containing equal numbers of galaxies 
 nbins = 50

@@ -7,7 +7,8 @@ from functions_old import *
 c = 0
 
 folder = "investigating_indicators/"
-file = 'cat.hdf5'
+# file = 'cat.hdf5'
+file = 'cat_dusttestszeb.hdf5'
 
 with h5py.File(file, 'r') as hdf:
     with open(folder+"keys.txt", "w") as k:
@@ -17,6 +18,7 @@ with h5py.File(file, 'r') as hdf:
 
     f_esc = np.array(hdf['f_esc_vir_full'])
     n_esc = np.array(hdf['Ndot_LyC_vir_full'])
+    print(len(f_esc))
 
     resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
@@ -45,17 +47,20 @@ with h5py.File(file, 'r') as hdf:
                      1/uv_density, uv_obs/uv_lum])
 
     #variable we are investigating for an f_esc relationship
-    x = uv_lum
+    x = np.array(hdf['ha_lum_obs_full'])
 
     # removes any rows that have zero, nan or infinity for the x, ssfr10, f_esc and n_esc
-    for i in range(len(np.concatenate(([x], [vars[1]], [f_esc, n_esc])))):
-        nan_indices = [index for index, val in enumerate(list(np.concatenate(([x], [vars[1]], [f_esc, n_esc]))[i]))
+    for i in range(len([x, ssfr50, f_esc, n_esc])):
+        nan_indices = [index for index, val in enumerate(list([x, ssfr50, f_esc, n_esc][i]))
                        if (val==0 or val == np.inf or val== -np.inf or np.isnan(val))][::-1]
         print(f"rows deleted: {len(nan_indices)}")
         f_esc, n_esc = (np.delete(f_esc, nan_indices), np.delete(n_esc, nan_indices))
         x = np.delete(x, nan_indices)
         vars = np.delete(vars, nan_indices, axis=1)
         redshift, star_mass = (np.delete(redshift, nan_indices), np.delete(star_mass, nan_indices))
+        ssfr50 = np.delete(ssfr50, nan_indices)
+    print('rows remaining:', len(f_esc))
+    print(min(x), max(x))
 
     log_vars = np.log10(vars).astype('float32')
     log_f_esc = np.log10(f_esc).astype('float32')

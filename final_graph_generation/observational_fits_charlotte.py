@@ -14,15 +14,25 @@ from matplotlib.ticker import MaxNLocator
 # True for weighted least squares regression, False for orthogonal distance regression
 least_squares = False
 
+# True to use Monte Carlo to estimate fit parameter uncertainties, False to use covariance matrix from fit
+mc = False
+
 # True for plotting residuals against variables, False for plotting predicted target against variables
 residuals = False
 
 # True for 2D histogram, False for scatter plot
-histogram = True
+histogram = False
+
+# Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
+dusty = True
 
 folder = "final_rf_model/"
-file5 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
-file6 = folder + 'n_esc_rf_observational_charlotte_test_train.json'
+if not dusty:
+    file5 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
+    file6 = folder + 'n_esc_rf_observational_charlotte_test_train.json'
+else:
+    file5 = folder + 'f_esc_rf_observational_charlotte_dusty_test_train.json'
+    file6 = folder + 'n_esc_rf_observational_charlotte_dusty_test_train.json'
 
 with fits.open("prosp_properties_GOODSS.fits") as hdul1:
     data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
@@ -36,7 +46,9 @@ obvs_redshift = obvs_data['z']
 obvs_star_mass = 10**(np.array(obvs_data['log(Mstar)']).astype('float64'))
 obvs_sfr10 = np.array(obvs_data['SFR10'])
 obvs_sfr100 = np.array(obvs_data['SFR100'])
-obvs_uv_mag = np.array(obvs_data['M1500int'])
+obvs_uv_mag = np.array(obvs_data['M1500obs'])
+# obvs_int_uv_mag = np.array(obvs_data['M1500int'])
+# attenuation = obvs_uv_mag - obvs_int_uv_mag
 
 obvs_ssfr10 = ssfr_func(obvs_sfr10, obvs_star_mass)
 obvs_ssfr100 = ssfr_func(obvs_sfr100, obvs_star_mass)
@@ -44,8 +56,8 @@ log10_offset10 = np.log10(obvs_ssfr10) - sfms_func(np.array([obvs_redshift, np.l
 
 random_variable = np.random.uniform(low=0, high=1, size=(len(obvs_redshift)))
 
-obvs_f_esc_vars = [obvs_ssfr10, obvs_ssfr100, obvs_ssfr10/obvs_ssfr100, obvs_star_mass, random_variable, 1+obvs_redshift, random_variable]
-obvs_f_esc_keys = ['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'uv_mag', '1 + redshift', 'random_variable']
+obvs_f_esc_vars = [obvs_ssfr10, obvs_ssfr10/obvs_ssfr100, obvs_star_mass, random_variable, 1+obvs_redshift, random_variable]
+obvs_f_esc_keys = ['offset10', 'ssfr10/ssfr100', 'star_mass', 'uv_mag', '1 + redshift', 'random_variable']
 obvs_n_esc_vars = [obvs_sfr10, obvs_sfr100, obvs_star_mass, random_variable, 1+obvs_redshift, random_variable]
 obvs_n_esc_keys = ['sfr10', 'sfr100', 'star_mass', 'uv_mag', '1 + redshift', 'random_variable']
 
@@ -54,8 +66,8 @@ obvs_log_n_esc_vars = np.log10(obvs_n_esc_vars).astype('float32')
 
 # replaces ssfr10 with offset from the star forming main sequence over 10Myrs
 obvs_log_f_esc_vars[0] = log10_offset10.astype('float32')
-# replaces the luminosities with magnitudes
-obvs_log_f_esc_vars[4] = obvs_uv_mag.astype('float32')
+# add the uv magnitude to the variables
+obvs_log_f_esc_vars[3] = obvs_uv_mag.astype('float32')
 obvs_log_n_esc_vars[3] = obvs_uv_mag.astype('float32')
 
 # Creates a list of bad IDs for the diffraction spike galaxies 
@@ -74,9 +86,9 @@ bad_indices += b_i
 b_i += [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 10]
 print(f"red_chi2(JWST) > 10 rows: {len(b_i)}")
 bad_indices += b_i
-for i in range(len(obvs_f_esc_vars)):
-    b_i = [index for index, val in enumerate(list((obvs_f_esc_vars)[i]))
-                    if (val == 0 or val == np.inf or val== -np.inf or val == np.nan)]
+for i in range(len(obvs_log_f_esc_vars)):
+    b_i = [index for index, val in enumerate(list((obvs_log_f_esc_vars)[i]))
+                    if (val == 0 or val == np.inf or val== -np.inf or np.isnan(val))]
     print(f"feature {i+1} bad rows: {len(b_i)}")
     bad_indices += b_i
 bad_indices = list(set(bad_indices))[::-1]
@@ -85,8 +97,8 @@ obvs_log_f_esc_vars = np.delete(obvs_log_f_esc_vars, bad_indices, axis=1)
 obvs_log_n_esc_vars = np.delete(obvs_log_n_esc_vars, bad_indices, axis=1)
 obvs_star_mass_high_error = np.delete(np.array(obvs_data['log(Mstar)_ehi']), bad_indices)
 obvs_star_mass_low_error = np.delete(np.array(obvs_data['log(Mstar)_elo']), bad_indices)
-obvs_uv_mag_high_error = np.delete(np.array(obvs_data['M1500int_ehi']), bad_indices)
-obvs_uv_mag_low_error = np.delete(np.array(obvs_data['M1500int_elo']), bad_indices)
+obvs_uv_mag_high_error = np.delete(np.array(obvs_data['M1500obs_ehi']), bad_indices)
+obvs_uv_mag_low_error = np.delete(np.array(obvs_data['M1500obs_elo']), bad_indices)
 print(f'rows remaining: {len(obvs_redshift)}')
 
 log_vars = [obvs_log_f_esc_vars, obvs_log_n_esc_vars]
@@ -123,13 +135,13 @@ sorted_indices = np.argsort(obvs_redshift)
 
 for i_1 in range(len(axes)):
 
-    x = [obvs_log_f_esc_vars[4], obvs_log_f_esc_vars[3]][i_1]
+    x = [obvs_log_f_esc_vars[3], obvs_log_f_esc_vars[2]][i_1]
+    print(min(x), max(x))
     x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
     x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
-    x_range = (([-28, -13], [5, 12])[i_1], ([-24, -14], [6, 11])[i_1])[histogram]
+    x_range = (([-28, -10], [5, 12])[i_1], ([-24, -12], [6, 11])[i_1])[histogram]
 
     for i_2 in range(len(axes)):
-        print((i_1, i_2))
         ax = axes[i_2, i_1]
         y_range = (([-3.5, -0.5], [48, 55])[i_2], ([-3.25, -0.75], [48.5, 54.5])[i_2])[histogram]
 
@@ -141,7 +153,12 @@ for i_1 in range(len(axes)):
                       '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
         f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
                               '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
-        loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_model.pkl')
+        print((x_str_no_unit, f_or_n_str_no_unit))
+
+        if not dusty:
+            loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_model.pkl')
+        else:
+            loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_dusty_model.pkl')
         predictions = loaded_model.predict(X)
 
         with open((file5, file6)[i_2], 'r') as json_data:
@@ -173,31 +190,67 @@ for i_1 in range(len(axes)):
         x_err_high = [np.abs(obvs_uv_mag_high_error), np.abs(obvs_star_mass_high_error)][i_1]
         x_err_sym = (x_err_low + x_err_high) / 2
 
-        if least_squares:
-            # Fit using Weighted Least Squares Regression, accounting only for y errors
-            popt, pcov = curve_fit(curve_fit_func, x, y, sigma=y_err, absolute_sigma=True)
-            a, b = popt
-            a_err, b_err = np.sqrt(np.diag(pcov))
+        if mc:
+            # Monte Carlo to estimate fit parameter uncertainties
+            x_err_median = np.median(x_err_sym[x_err_sym > 0]) * 1e-6
+            x_err_sym[x_err_sym <= 0] = x_err_median
+            mc_iters = 1000
+            sub_size = len(x)//5
+            betas = np.zeros((mc_iters, 2))
+
+            for k in range(mc_iters):
+                # bootstrap indices + perturb by measurement errors
+                idx = np.random.choice(len(x), size=sub_size, replace=False)
+                xb = x[idx] + np.random.normal(0, x_err_sym[idx])
+                yb = y[idx] + np.random.normal(0, y_err[idx])
+
+                if least_squares:
+                    # Fit using Weighted Least Squares Regression, accounting only for y errors
+                    popt, _ = curve_fit(curve_fit_func, xb, yb, sigma=y_err[idx], absolute_sigma=True)
+                    betas[k] = popt[0], popt[1]
+                
+                else:
+                    # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
+                    model_mc = odr.Model(linear_1var)
+                    data_mc = odr.RealData(xb, yb, sx=x_err_sym[idx], sy=y_err[idx])
+                    out_mc = odr.ODR(data_mc, model_mc, beta0=[0, np.median(y)]).run()
+                    betas[k] = out_mc.beta
+
+            # MC medians and 16/84 percentiles
+            a, b = np.median(betas, axis=0)
+            a_16, a_84 = np.percentile(betas[:,0], [16, 84])
+            b_16, b_84 = np.percentile(betas[:,1], [16, 84])
+            a_err = 0.5 * (a_84 - a_16)
+            b_err = 0.5 * (b_84 - b_16)
+            pcov = np.cov(betas.T)        
 
         else:
-            # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
-            x_err_median = np.nanmedian(x_err_sym[x_err_sym > 0]) * 1e-6
-            x_err_sym[x_err_sym <= 0] = x_err_median
-            model = odr.Model(linear_1var)
-            data = odr.RealData(x, y, sx=x_err_sym, sy=y_err)
-            odr_inst = odr.ODR(data, model, beta0=[0, np.median(y)])
-            out = odr_inst.run()
+            if least_squares:
+                # Fit using Weighted Least Squares Regression, accounting only for y errors
+                popt, pcov = curve_fit(curve_fit_func, x, y, sigma=y_err, absolute_sigma=True)
+                a, b = popt
+                a_err, b_err = np.sqrt(np.diag(pcov))
 
-            a, b = out.beta
-            a_err, b_err = out.sd_beta 
-            pcov = out.cov_beta
+            else:
+                # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
+                x_err_median = np.nanmedian(x_err_sym[x_err_sym > 0]) * 1e-6
+                x_err_sym[x_err_sym <= 0] = x_err_median
+                model = odr.Model(linear_1var)
+                data = odr.RealData(x, y, sx=x_err_sym, sy=y_err)
+                odr_inst = odr.ODR(data, model, beta0=[0, np.median(y)])
+                out = odr_inst.run()
+
+                a, b = out.beta
+                a_err, b_err = out.sd_beta 
+                pcov = out.cov_beta
 
         x_fit = np.linspace(x_range[0], x_range[1], 100)
         y_fit = linear_1var((a, b), x_fit)
 
         if residuals:
+            y_residuals = y - linear_1var((a, b), x)
             # plots the residual scatter points
-            scatter = ax.scatter(x[sorted_indices], y[sorted_indices] - linear_1var((a, b), x[sorted_indices]), alpha=0.9,
+            scatter = ax.scatter(x[sorted_indices], y_residuals[sorted_indices], alpha=0.9,
                                             c=obvs_redshift[sorted_indices], cmap='viridis', s=1, zorder=3,
                                             vmin=3, vmax=9
                                             )
@@ -223,6 +276,9 @@ for i_1 in range(len(axes)):
             ax.fill_between(x_medians, np.array(y_16th) - linear_1var((a, b), np.array(x_medians)),
                             np.array(y_84th) - linear_1var((a, b), np.array(x_medians)),
                             color='r', alpha=0.2, label="16th-84th percentile", zorder=4)
+            
+            std_uv = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
+            print(std_uv)
 
         else:
             if not histogram:
@@ -281,7 +337,7 @@ for i_1 in range(len(axes)):
             ax.set_xlim(x_range)
             ax.set_ylim(y_range)
             ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
-            
+                    
         ax.set_box_aspect(1)
         ax.grid(False)
         # ax.grid(True, alpha=0.6, linestyle='--')

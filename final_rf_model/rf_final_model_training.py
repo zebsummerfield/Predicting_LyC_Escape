@@ -14,9 +14,9 @@ folder = "final_rf_model/"
 file = 'cat.hdf5'
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 0
+f_or_n = 1
 # True if model is generated to predict for an observational catalogue 
-obvs = False
+obvs = True
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
 
 # loads both the catalogue of galaxies and their variables
@@ -37,7 +37,7 @@ with h5py.File(file, 'r') as hdf:
     vir_mass = np.array(hdf['M_vir_full'])
     gas_mass = np.array(hdf['gas_mass_full'])
     ha_lum = np.array(hdf['ha_lum_int_full']) * 5
-    uv_lum = np.array(hdf['uv_lum_int_full'])
+    uv_lum = np.array(hdf['uv_lum_obs_full'])
     # gas_met = np.array(hdf['gas_met_full'])
     star_met = np.array(hdf['star_met_full'])
     star_size = np.array(hdf['stellar_size_full'])
@@ -97,30 +97,30 @@ with h5py.File(file, 'r') as hdf:
     log_f_esc_vars[0] = log_osfms10.astype('float32')
     #log_f_esc_vars[-1] = log_osfms100.astype('float32')
 
-    # replaces the luminosities with magnitudes
+    # replaces the UV luminosities with magnitudes
     lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
     uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
-    # ha_mag = -2.5 * np.log10((n_esc_vars[7]) / lum_to_tenpc) - 48.6
     log_f_esc_vars[7] = uv_mag.astype('float32')
     log_n_esc_vars[6] = uv_mag.astype('float32')
-    # log_n_esc_vars[7] = ha_mag.astype('float32')
 
     vars = [f_esc_vars, n_esc_vars][f_or_n]
     log_vars = [log_f_esc_vars, log_n_esc_vars][f_or_n]
     keys = [f_esc_keys, n_esc_keys][f_or_n]
 
     # selects only the variables that are present in the observational catalogue
-    if obvs_cat == 'lola':
-        f_esc_observational_vars = [0, 1, 2, 3, 7, 8, 9, 10, 14, 15]
-        n_esc_observational_vars = [0, 1, 2, 6, 7, 8, 9]
+    if obvs and obvs_cat == 'lola':
+        f_esc_selected_vars = [0, 2, 3, 7, 8, 9, 10, 14, 15]
+        n_esc_selected_vars = [0, 1, 2, 6, 7, 8, 9]
+    elif obvs and obvs_cat == 'charlotte':
+        f_esc_selected_vars = [0, 2, 3, 7, 14, 15]        
+        n_esc_selected_vars = [0, 1, 2, 6, 8, 9]
     else:
-        f_esc_observational_vars = [0, 1, 2, 3, 7, 14, 15]        
-        n_esc_observational_vars = [0, 1, 2, 6, 8, 9]
-    selected_vars = [f_esc_observational_vars, n_esc_observational_vars][f_or_n]
-    if obvs:
-        keys = keys[selected_vars]
-        vars = vars[selected_vars]
-        log_vars = log_vars[selected_vars]
+        f_esc_selected_vars = [0,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
+        n_esc_selected_vars = [0,1,2,3,4,5,6,7,8,9]
+    selected_vars = [f_esc_selected_vars, n_esc_selected_vars][f_or_n]
+    keys = keys[selected_vars]
+    vars = vars[selected_vars]
+    log_vars = log_vars[selected_vars]
     print(keys)
     
     # removes any rows that have zero ,unity or infinity for the vars and f_esc
@@ -154,7 +154,7 @@ with h5py.File(file, 'r') as hdf:
     Y = [log_f_esc, log_n_esc][f_or_n]
 
 # run random forest 1000 times to get an average on importances and errors
-n = 1000
+n = 10
 test_mae_list = np.zeros(n)
 test_mse_list = np.zeros(n)
 train_mae_list = np.zeros(n)
@@ -163,7 +163,7 @@ importances_list = np.zeros(shape=(n, len(keys)))
 for i in range(n):
 
     x_train, x_test, y_train, y_test, res_train, res_test = train_test_split(
-        X, Y, resolution, test_size=0.25, random_state=i)
+        X, Y, resolution, test_size=0.25)
 
     # # carries out rejection sampling to cap the density of the f_esc distribution
     # height_fraction = 1

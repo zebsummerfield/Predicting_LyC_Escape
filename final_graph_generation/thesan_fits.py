@@ -12,35 +12,37 @@ from scipy import odr
 from matplotlib.ticker import MaxNLocator
 
 # True for plotting residuals against variables, False for plotting predicted target against variables
-residuals = False
+residuals = True
 
 # True for 2D histogram, False for scatter plot
-histogram = True
+histogram = False
+
+# Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
+dusty =     True
 
 folder = "final_rf_model/"
-file = 'cat.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=0, obvs=True, eps=True, add_vars=['redshift_full'])
+if not dusty:
+    file = 'cat.hdf5'
+    keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, eps=True, add_vars=['redshift_full'])
+else:
+    file = 'cat_dusttestszeb.hdf5'
+    keys, log_vars, log_f_esc, log_n_esc = prepare_data_dusty(file, f_or_n=1, obvs=True, eps=True, add_vars=['redshift_full'])
 print(keys)
 
 def linear_1var(p, X):
     a, b = p
     return a * X + b
 
-def curve_fit_func(X, a, b):
+def linear_2var(p, X):
+    a, b, c = p
+    x, z = X
+    return a * x + b * z + c
+
+def curve_fit_func_1var(X, a, b):
     return linear_1var((a, b), X)
 
-def round_to_error(value, error):
-    if error == 0:
-        return f"{value:.3f}", f"{error:.3f}"
-    # Determine number of decimal places based on error's significant digit
-    order = int(math.floor(math.log10(abs(error))))
-    rounded_value = round(value, -order)
-    rounded_error = round(error, -order)
-    if rounded_error >= 10 ** (order + 1):
-        order += 1
-        rounded_error = round(error, -order)
-    format_str = f"{{:.{-order}f}}"
-    return format_str.format(rounded_value), format_str.format(rounded_error)
+def curve_fit_func_2var(X, a, b, c):
+    return linear_2var((a, b, c), X)
 
 
 plt.style.use('./MNRAS_Style.mplstyle')
@@ -53,13 +55,12 @@ sorted_indices = np.argsort(redshift)
 
 for i_1 in range(len(axes)):
 
-    x = [log_vars[4], log_vars[3]][i_1]
+    x = [log_vars[3], log_vars[2]][i_1]
     x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
     x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
     x_range = ([-24, -11], [6, 11])[i_1]
 
     for i_2 in range(len(axes)):
-        print((i_1, i_2))
         ax = axes[i_2, i_1]
         y = [log_f_esc, log_n_esc][i_2]
         y_range = ([-5, -0], [45, 55])[i_2]
@@ -67,19 +68,35 @@ for i_1 in range(len(axes)):
                       '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
         f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
                               '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
+        print((x_str_no_unit, f_or_n_str_no_unit))
         
         # Fit using Weighted Least Squares Regression
 
-        popt, pcov = curve_fit(curve_fit_func, x, y)
+        popt, pcov = curve_fit(curve_fit_func_1var, x, y)
         a, b = popt
         a_err, b_err = np.sqrt(np.diag(pcov))
+
+        # Print fit parameters for Weighted Least Squares Regression including redshift dependence
+        popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, redshift), y)
+        a_2, b_2, c_2 = popt_2
+        a_2_err, b_2_err, c_2_err = np.sqrt(np.diag(pcov_2))
+        a_2_str, a_2_err_str = round_to_error(a_2, a_2_err)
+        b_2_str, b_2_err_str = round_to_error(b_2, b_2_err)
+        c_2_str, c_2_err_str = round_to_error(c_2, c_2_err)
+        print((
+            rf'Log10({["f_esc", "n_ion,esc"][i_2]}) = '
+            rf'({a_2_str}±{a_2_err_str}){["Muv", "M*"][i_1]} + '
+            rf'({b_2_str}±{b_2_err_str})z + '
+            rf'({c_2_str}±{c_2_err_str})'
+        ))
 
         x_fit = np.linspace(x_range[0], x_range[1], 100)
         y_fit = linear_1var((a, b), x_fit)
 
         if residuals:
             # plots the residual scatter points
-            scatter = ax.scatter(x[sorted_indices], y[sorted_indices] - linear_1var((a, b), x[sorted_indices]), alpha=0.9,
+            y_residuals = y - linear_1var((a, b), x)
+            scatter = ax.scatter(x[sorted_indices], y_residuals[sorted_indices], alpha=0.9,
                                             c=redshift[sorted_indices], cmap='viridis', s=1, zorder=3,
                                             vmin=3, vmax=16
                                             )
@@ -105,6 +122,9 @@ for i_1 in range(len(axes)):
             ax.fill_between(x_medians, np.array(y_16th) - linear_1var((a, b), np.array(x_medians)),
                             np.array(y_84th) - linear_1var((a, b), np.array(x_medians)),
                             color='r', alpha=0.2, label="16th-84th percentile", zorder=4)
+
+            std_uv = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
+            print(std_uv)
 
         else:
             if not histogram:
