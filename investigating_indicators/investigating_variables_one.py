@@ -47,7 +47,7 @@ with h5py.File(file, 'r') as hdf:
                      1/uv_density, uv_obs/uv_lum])
 
     #variable we are investigating for an f_esc relationship
-    x = np.array(hdf['ha_lum_obs_full'])
+    x = np.array(hdf['uv_lum_obs_gal_full'])  # change this to investigate different variables
 
     # removes any rows that have zero, nan or infinity for the x, ssfr10, f_esc and n_esc
     for i in range(len([x, ssfr50, f_esc, n_esc])):

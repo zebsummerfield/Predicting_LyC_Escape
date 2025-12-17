@@ -14,12 +14,13 @@ f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 # True to split the data into redshift bins
-split_redshift = False
+split_redshift = True
+# True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
+dusty = True
 
 folder = "final_graph_generation/"
-file = 'cat.hdf5'
-# file = 'cat_dusttestszeb.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=True,
+file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=True,
                                                     add_vars=['redshift_full', 'stellar_mass_full', 'sfr_full_50'])
 ssfr50 = ssfr_func(10**log_vars[-1], 10**log_vars[-2])
 
@@ -42,7 +43,7 @@ if not split_redshift:
     ax3 = fig.add_subplot(gs[3], sharey=ax0)
     axes = np.array([ax0, ax1, ax2, ax3])
 
-    ax0.set_ylim(0, 10000)
+    ax0.set_ylim(0, (10000, 4000)[dusty])
     ax0.set_ylabel('Number of Galaxies per Bin')
 
     # here the distributions of variables in the filtered dataset are plotted in histograms
@@ -137,9 +138,9 @@ else:
     axes[0,0].set_ylabel('Number of Galaxies per Bin')
     axes[1,0].set_ylabel('Number of Galaxies per Bin')
     axes[2,0].set_ylabel('Number of Galaxies per Bin')
-    axes[0,0].set_ylim(0, 4500)
-    axes[1,0].set_ylim(0, 4500)
-    axes[2,0].set_ylim(0, 2000)
+    axes[0,0].set_ylim(0, (4500, 2000)[dusty])
+    axes[1,0].set_ylim(0, (4500, 2000)[dusty])
+    axes[2,0].set_ylim(0, (2000, 500)[dusty])
 
 
 

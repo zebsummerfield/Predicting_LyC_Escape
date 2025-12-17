@@ -8,25 +8,23 @@ from functions import *
 from scipy.optimize import curve_fit
 import math
 from astropy.io import fits
-from scipy import odr
 from matplotlib.ticker import MaxNLocator
 
 # True for plotting residuals against variables, False for plotting predicted target against variables
-residuals = True
+residuals = False
 
 # True for 2D histogram, False for scatter plot
-histogram = False
+histogram = True
 
 # Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
-dusty =     True
+dusty = True
 
 folder = "final_rf_model/"
-if not dusty:
-    file = 'cat.hdf5'
-    keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, eps=True, add_vars=['redshift_full'])
-else:
+if dusty:
     file = 'cat_dusttestszeb.hdf5'
-    keys, log_vars, log_f_esc, log_n_esc = prepare_data_dusty(file, f_or_n=1, obvs=True, eps=True, add_vars=['redshift_full'])
+else:
+    file = 'cat.hdf5'
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, add_vars=['redshift_full'])
 print(keys)
 
 def linear_1var(p, X):
@@ -46,7 +44,8 @@ def curve_fit_func_2var(X, a, b, c):
 
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 18})
+mpl.rcParams.update({'font.size': 22})
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
 # sorts the data by redshift for plotting
@@ -58,12 +57,12 @@ for i_1 in range(len(axes)):
     x = [log_vars[3], log_vars[2]][i_1]
     x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
     x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
-    x_range = ([-24, -11], [6, 11])[i_1]
+    x_range = (([-27, -11], [5, 12])[i_1], ([-23, -13], [6, 11])[i_1])[histogram]
 
     for i_2 in range(len(axes)):
         ax = axes[i_2, i_1]
         y = [log_f_esc, log_n_esc][i_2]
-        y_range = ([-5, -0], [45, 55])[i_2]
+        y_range = ([-5, -0], [44.5, 54.5])[i_2]
         f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
                       '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
         f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
@@ -71,31 +70,40 @@ for i_1 in range(len(axes)):
         print((x_str_no_unit, f_or_n_str_no_unit))
         
         # Fit using Weighted Least Squares Regression
-
         popt, pcov = curve_fit(curve_fit_func_1var, x, y)
         a, b = popt
         a_err, b_err = np.sqrt(np.diag(pcov))
 
         # Print fit parameters for Weighted Least Squares Regression including redshift dependence
-        popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, redshift), y)
+        popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, np.log10(1+redshift)), y)
         a_2, b_2, c_2 = popt_2
         a_2_err, b_2_err, c_2_err = np.sqrt(np.diag(pcov_2))
         a_2_str, a_2_err_str = round_to_error(a_2, a_2_err)
         b_2_str, b_2_err_str = round_to_error(b_2, b_2_err)
         c_2_str, c_2_err_str = round_to_error(c_2, c_2_err)
         print((
-            rf'Log10({["f_esc", "n_ion,esc"][i_2]}) = '
+            rf'log10({["f_esc", "n_ion,esc"][i_2]}) = '
             rf'({a_2_str}±{a_2_err_str}){["Muv", "M*"][i_1]} + '
-            rf'({b_2_str}±{b_2_err_str})z + '
+            rf'({b_2_str}±{b_2_err_str})log10(1+z) + '
             rf'({c_2_str}±{c_2_err_str})'
         ))
 
-        x_fit = np.linspace(x_range[0], x_range[1], 100)
-        y_fit = linear_1var((a, b), x_fit)
+        y_residuals = y - linear_2var((a_2, b_2, c_2), (x, np.log10(1+redshift)))
+        std_uv = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
+        print(f"Standard deviation of residuals: {std_uv}")
+
+        popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y, np.log10(1+redshift)), x)
+        a_3, b_3, c_3 = popt_3
+        x_residuals = x - linear_2var((a_3, b_3, c_3), (y, np.log10(1+redshift)))
+        std_x = np.sqrt((1/ (len(y)- 2)) * np.sum(x_residuals**2))
+        print(f"Fit reveresd standard deviation of residuals: {std_x}")
+
+        if i_2 == 1:
+            ax.text((0.975, 0.025)[i_1], 0.975, r'$\sigma_{\dot{n}} = $' + str(round(std_uv, 3)),
+                    ha=('right', 'left')[i_1], va='top', transform=ax.transAxes, fontsize=19, color=('black', 'white')[histogram])
 
         if residuals:
             # plots the residual scatter points
-            y_residuals = y - linear_1var((a, b), x)
             scatter = ax.scatter(x[sorted_indices], y_residuals[sorted_indices], alpha=0.9,
                                             c=redshift[sorted_indices], cmap='viridis', s=1, zorder=3,
                                             vmin=3, vmax=16
@@ -113,18 +121,17 @@ for i_1 in range(len(axes)):
                 bin_mask = bin_indices == i
                 x_medians.append(np.median(x[bin_mask]))
                 y_medians.append(np.median(y[bin_mask]))
+                redshift_medians = np.median(redshift[bin_mask])
                 y_16th.append(np.percentile(y[bin_mask], 16))
                 y_84th.append(np.percentile(y[bin_mask], 84))
+            log_redshift_medians = np.log10(1 + redshift_medians)
             
             # plots the median of x against the median of residuals for each bin
-            ax.plot(x_medians, np.array(y_medians) - linear_1var((a, b), np.array(x_medians)), 
+            ax.plot(x_medians, np.array(y_medians) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)), 
                     c='r', linewidth=3, alpha=0.8, label="median residual", zorder=4)
-            ax.fill_between(x_medians, np.array(y_16th) - linear_1var((a, b), np.array(x_medians)),
-                            np.array(y_84th) - linear_1var((a, b), np.array(x_medians)),
+            ax.fill_between(x_medians, np.array(y_16th) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)),
+                            np.array(y_84th) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)),
                             color='r', alpha=0.2, label="16th-84th percentile", zorder=4)
-
-            std_uv = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
-            print(std_uv)
 
         else:
             if not histogram:
@@ -147,27 +154,54 @@ for i_1 in range(len(axes)):
                 h_plot = ax.imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
                                origin='lower', aspect='auto', cmap='magma', interpolation='nearest', zorder=1)
 
-            # Plots the best fit line with confidence bands (regions of possible fit based on parameter errors)
-            fit = ax.plot(x_fit, y_fit, c='teal', linewidth=2, alpha=0.8, zorder=4)
+            if i_2 == 1:
+                # Plots the best fit line with confidence bands (regions of possible fit based on parameter errors)
+                x_fit = np.linspace(x_range[0], x_range[1], 100)
+                y_fit = linear_1var((a, b), x_fit)
+                fit = ax.plot(x_fit, y_fit, c='teal', linewidth=3, alpha=0.8, zorder=4)
 
-            n_std = 5
-            y_upper = np.zeros_like(x_fit)
-            y_lower = np.zeros_like(x_fit)
-            for i, xi in enumerate(x_fit):
-                x_vec = np.array([xi, 1])
-                var_y = x_vec @ pcov @ x_vec
-                std_error = np.sqrt(var_y)
-                y_upper[i] = y_fit[i] + n_std * std_error
-                y_lower[i] = y_fit[i] - n_std * std_error
-            ax.fill_between(x_fit, y_lower, y_upper, color='teal', alpha=0.4, zorder=4,
-                        label='95% Confidence Band')
-            
-            # adding fit parameters as text to the graph
-            a_str, a_err_str = round_to_error(a, a_err)
-            b_str, b_err_str = round_to_error(b, b_err)
-            fit_label = f'{f_or_n_str_no_unit} = ({a_str}$\pm${a_err_str}) {x_str_no_unit} + ({b_str}$\pm${b_err_str})'
-            ax.text(0.05, 0.025, fit_label, ha='left', va='bottom',
-                    transform=ax.transAxes, fontsize=14, color=('black', 'white')[histogram])
+                # n_std = 5
+                # y_upper = np.zeros_like(x_fit)
+                # y_lower = np.zeros_like(x_fit)
+                # for i, xi in enumerate(x_fit):
+                #     x_vec = np.array([xi, 1])
+                #     var_y = x_vec @ pcov @ x_vec
+                #     std_error = np.sqrt(var_y)
+                #     y_upper[i] = y_fit[i] + n_std * std_error
+                #     y_lower[i] = y_fit[i] - n_std * std_error
+                # ax.fill_between(x_fit, y_lower, y_upper, color='teal', alpha=0.4, zorder=4,
+                #             label='95% Confidence Band')
+                
+                # adding fit parameters as text to the graph
+                A, B = a_2, b_2
+                A_err, B_err = a_2_err, b_2_err
+                if i_1 == 0:
+                    # Muv fit
+                    C = c_2 - 20*a_2 + np.log10(7) * b_2  # normalizing at Muv = -20 and z = 6
+                    # TC = np.array([-20, np.log10(7), 1])
+                    # C_err = np.sqrt(TC @ pcov_2 @ TC.T)
+                    C_err = np.sqrt(c_2_err**2 + (-20 * a_2_err)**2 + (np.log10(7) * b_2_err)**2)
+                else:
+                    # stellar mass fit
+                    C = c_2 + 10*a_2 + np.log10(7) * b_2  # normalizing at log10(M*) = 10 and z = 6
+                    # TC = np.array([10, np.log10(7), 1])
+                    # C_err = np.sqrt(TC @ pcov_2 @ TC.T)
+                    C_err = np.sqrt(c_2_err**2 + (10 * a_2_err)**2 + (np.log10(7) * b_2_err)**2)
+
+                A_str, A_err_str = round_to_error(A, A_err)
+                B_str, B_err_str = round_to_error(B, B_err)
+                C_str, C_err_str = round_to_error(C, C_err)
+                # z_str = r'$\mathrm{log}_{10}\left(\frac{1+z}{7}\right)$'
+                z_str = r'$\mathrm{log}_{10}((1+z)/7)$'
+                fit_label = (
+                    r"$\begin{aligned}"
+                    f"{f_or_n_str_no_unit.replace('$', '')} &= ({A_str}\\pm{A_err_str})({x_str_no_unit.replace('$', '')} {['+ 20', '- 10'][i_1]}) \\\\"
+                    f"&+ ({B_str}\\pm{B_err_str}){z_str.replace('$', '')} \\\\"
+                    f"&+ ({C_str}\\pm{C_err_str})"
+                    r"\end{aligned}$"
+                )
+                ax.text(0.025, 0.025, fit_label, ha='left', va='bottom',
+                        transform=ax.transAxes, fontsize=16, color=('black', 'white')[histogram])
         
             # axes setup
             if i_2 == 1:
@@ -190,7 +224,7 @@ if not histogram:
     cbar.set_label("$z$", labelpad=10)
 else:
     cbar = fig.colorbar(h_plot, ax=axes, orientation='vertical', aspect=30, pad=0.03)
-    cbar.set_label("Number of Galaxies in Bin", labelpad=5)
+    cbar.set_label("$N_\mathrm{gal}$", labelpad=5)
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"

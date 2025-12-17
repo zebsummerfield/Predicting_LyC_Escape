@@ -24,9 +24,9 @@ fig, ax1 = plt.subplots(figsize=(8, 8))
 
 plot1 = ax1.plot(n_estimators, mean_test_mae, label='Test MAE', color='orange')
 ax1.set_xlabel('Number of Decision Trees')
-ax1.set_ylabel('Test Set Mean Absolute Error (MAE) [dex]')
+ax1.set_ylabel('Mean Absolute Error (MAE) [dex]')
 ax1.set_xlim(0, 1000)
-ax1.set_ylim(0.4275, 0.4325)
+ax1.set_ylim(0.4265, 0.4325)
 
 ax2 = ax1.twinx()
 plot2 = ax2.plot(n_estimators, mean_time, label='Training Time', color='green')
@@ -45,7 +45,7 @@ ax2.grid(False)
 
 plots = [plot1[0], plot2[0], thresh]
 labels = [p.get_label() for p in plots]
-legend = ax1.legend(plots, labels, fontsize=16, loc='lower right', bbox_to_anchor=(0.95, 0.05))
+legend = ax1.legend(plots, labels, fontsize=20, loc='lower right', bbox_to_anchor=(0.95, 0.05))
 legend.get_frame().set_edgecolor('black')
 legend.get_frame().set_boxstyle('Square')
 legend.get_frame().set_alpha(1.0)

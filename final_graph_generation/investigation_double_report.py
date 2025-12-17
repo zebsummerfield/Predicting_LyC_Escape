@@ -5,31 +5,30 @@ import matplotlib as mpl
 from matplotlib.ticker import MaxNLocator
 from functions import *
 
-# 0 for f_esc, 1 for n_esc
-f_or_n = 0
-
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 
 # True to make the graphs scatter plots, False to make the graphs histograms
 scatter = False
 
-folder = "final_graph_generation/"
-file = 'cat.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=False,
-                                                    add_vars=['stellar_mass_full', 'gas_mass_full'])
+# True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
+dusty = True
 
+folder = "final_graph_generation/"
+file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=0, obvs=obvs, dusty=dusty, eps=False,
+                                                    add_vars=['stellar_mass_full', 'gas_mass_full'])
 print(keys)
 x = log_vars[-2]
 gas_mass = 10**log_vars[-1].astype('float64')
 gas_mass = gas_mass / (0.76 / 1.6735575e-24)
 gas_mass = gas_mass / 1.989e33
 y = np.log10(gas_mass)
-x_str = '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'
-y_str = '$\mathrm{Log}_{10}(M_\mathrm{gas} \; [\mathrm{M}_\odot])$'
+x_str = '$\mathrm{log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'
+y_str = '$\mathrm{log}_{10}(M_\mathrm{gas} \; [\mathrm{M}_\odot])$'
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 16})
+mpl.rcParams.update({'font.size': 17})
 fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 for ax_i in range(len(axes)):
@@ -37,8 +36,8 @@ for ax_i in range(len(axes)):
 
     log_target = [log_f_esc, log_n_esc][ax_i]
     target = 10**log_target.astype('float64')
-    f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                  '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
+    f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
+                  '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
 
     if scatter:
         # plots a scatter of x against y where the colour and size of the points is determined by the target
@@ -59,7 +58,7 @@ for ax_i in range(len(axes)):
 
     else:
         # plots a 2d histogram of x against y where the colour of the bin is dictated by it's mean log_target
-        nbins = 30
+        nbins = (30, 20)[dusty]
         hist, xedges, yedges = np.histogram2d(x, y, bins=nbins, weights=log_target)
         x_width = xedges[1] - xedges[0]
         y_width = yedges[1] - yedges[0]
@@ -91,6 +90,12 @@ for ax_i in range(len(axes)):
         # PCA Direction Arrow
         vari_pcc = np.array([x, y, log_target])  
         theta, theta_err = pcc_err(vari_pcc, theta=True)
+        # For some reason the PCA analysis yields theta and theta_err ~ pi/2 radians for n_esc with the dusty catalogue
+        # Therefore we manually set the values to that of the old catalogue here 
+        if ax_i == 1:
+            theta = 1.510
+            theta_err = 0.006
+
 
         # sets arrow appearance and position
         xmin, xmax = ax.get_xlim()

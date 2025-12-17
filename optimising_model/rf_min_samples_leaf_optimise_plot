@@ -39,7 +39,7 @@ for line in ax.get_xgridlines() + ax.get_ygridlines():
 
 plots = [plot1[0], plot2[0], thresh]
 labels = [p.get_label() for p in plots]
-legend = ax.legend(plots, labels, fontsize=16, loc='lower right', bbox_to_anchor=(0.95, 0.05))
+legend = ax.legend(plots, labels, fontsize=20, loc='lower right', bbox_to_anchor=(0.95, 0.05))
 legend.get_frame().set_edgecolor('black')
 legend.get_frame().set_boxstyle('Square')
 legend.get_frame().set_alpha(1.0)

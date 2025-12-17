@@ -17,7 +17,7 @@ fig, ax = plt.subplots(figsize=(8, 8))
 
 plot1 = ax.plot(max_features, mean_test_mae, label='Test MAE', color='orange')
 ax.set_xlabel('Maximum Number of Features Considered at Node Splits')
-ax.set_ylabel('Test Set Mean Absolute Error (MAE) [dex]')
+ax.set_ylabel('Mean Absolute Error (MAE) [dex]')
 ax.set_xlim(1, 16)
 ax.set_ylim(0.42, 0.48)
 ax.set_xticks(max_features[1::2])
@@ -33,7 +33,7 @@ for line in ax.get_xgridlines() + ax.get_ygridlines():
 
 plots = [plot1[0], thresh]
 labels = [p.get_label() for p in plots]
-legend = ax.legend(plots, labels, fontsize=16, loc='upper right', bbox_to_anchor=(0.95, 0.95))
+legend = ax.legend(plots, labels, fontsize=20, loc='upper right', bbox_to_anchor=(0.95, 0.95), frameon=True)
 legend.get_frame().set_edgecolor('black')
 legend.get_frame().set_boxstyle('Square')
 legend.get_frame().set_alpha(1.0)

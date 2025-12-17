@@ -7,6 +7,9 @@ from matplotlib.colors import LinearSegmentedColormap
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from matplotlib.ticker import MaxNLocator
 
+# True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
+dusty = True
+
 def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
     new_cmap = LinearSegmentedColormap.from_list(
         f'trunc({cmap.name},{minval:.2f},{maxval:.2f})',
@@ -15,12 +18,18 @@ def truncate_colormap(cmap, minval=0.5, maxval=1.0, n=256):
     return new_cmap
 
 folder = "final_rf_model/"
-file1 = folder + 'f_esc_rf_final_test_train.json'
-file2 = folder + 'n_esc_rf_final_test_train.json'
-file3 = folder + 'f_esc_rf_observational_charlotte_test_train.json'
-file4 = folder + 'n_esc_rf_observational_charlotte_test_train.json' 
+dusty_str = ['','_dusty'][dusty]
+file1 = folder + f'f_esc_rf_final{dusty_str}_test_train.json'
+file2 = folder + f'n_esc_rf_final{dusty_str}_test_train.json'
+file3 = folder + f'f_esc_rf_observational_charlotte{dusty_str}_test_train.json'
+file4 = folder + f'n_esc_rf_observational_charlotte{dusty_str}_test_train.json' 
 files = [file1, file2, file3, file4]
 model_strs = ['Model A', 'Model B', 'Model C', 'Model D']
+model_strs_2 = ['Best $f_\mathrm{esc}$',
+                'Best $\dot{n}_\mathrm{ion,esc}$',
+                'Observational $f_\mathrm{esc}$', 
+                'Observational $\dot{n}_\mathrm{ion,esc}$']
+model_strs_3 = 'Predictor'
 colours = [mpl.colormaps['Purples'](1.0),
            mpl.colormaps['Reds'](1.0),
            mpl.colormaps['Blues'](1.0),
@@ -34,7 +43,7 @@ cmaps = [truncate_colormap(plt.cm.Purples, 0.1, 1.0),
 log = False
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 20})
+mpl.rcParams.update({'font.size': 24})
 box_width = 0.2
 fig_ratio = 3
 plot_height = 8
@@ -58,8 +67,8 @@ cbar_ax4 = fig.add_axes([0.775, 0.92, box_width, 0.02]) # colorbar axis for mode
 cbars = [cbar_ax1, cbar_ax2, cbar_ax3, cbar_ax4]
 hists = []
 
-x_strs = ["$\mathrm{Log}_{10}(f_\mathrm{esc})$", "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$"]
-y_strs = ["$\mathrm{Log}_{10}(f_\mathrm{esc})$ Predicted", "$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$ Predicted"]
+x_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$ Predicted", "$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$ Predicted"]
+y_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$", "$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$"]
 
 for m_i in range(len(model_strs)):
     x_str = x_strs[m_i % 2]
@@ -93,8 +102,8 @@ for m_i in range(len(model_strs)):
     print(f"Maximum Test Prediction: {max(test_pred)}")
     print(f"Minimum Test Prediction: {min(test_pred)}")
 
-    x_min, x_max = [(-5, 0), (45, 55)][m_i % 2]
-    nbins = 75
+    x_min, x_max = [(-4, 0), (46, 54)][m_i % 2]
+    nbins = (75, 45)[dusty]
     x_bins = np.linspace(x_min, x_max, nbins+1)
     
     axes[0, m_i].set_xlim(x_min, x_max)
@@ -121,7 +130,7 @@ for m_i in range(len(model_strs)):
 
     # seperates the galaxies into bins of predicted test target with each containing equal numbers of galaxies, 
     # then plots the median of predicted test target against the median of test target for each bin
-    nbins = 25
+    nbins = [25, 15][dusty]
     bins = np.quantile(test_pred, np.linspace(0, 1, nbins + 1))
     bin_indices = np.digitize(test_pred, bins)
     test_pred_medians = np.zeros(nbins) 
@@ -134,9 +143,12 @@ for m_i in range(len(model_strs)):
         test_medians[i-1] = np.median(test[bin_mask])
         test_pred_mae[i-1] = mean_absolute_error(test[bin_mask], test_pred[bin_mask])
         test_pred_mse[i-1] = mean_squared_error(test[bin_mask], test_pred[bin_mask])
-    axes[0, m_i].plot(test_pred_medians, test_medians, c='r', linewidth=3, alpha=0.8, zorder=3)
+    axes[0, m_i].plot(test_pred_medians, test_medians, c='red', linewidth=3, alpha=0.8, zorder=3)
     # axes[0, m_i].fill_between(test_pred_medians, test_medians - test_pred_mae, test_medians + test_pred_mae,
     #                           color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
+
+    cut = [ -2, 50][m_i % 2]
+    print(f"Mean Absolute Error for {('f_esc', 'n_esc')[m_i % 2]} > {cut}: {mean_absolute_error(test[test_pred > cut], test_pred[test_pred > cut])}")
 
     # plots the line of y = x
     axes[0, m_i].plot((x_min, x_max), (x_min, x_max), c='black', linewidth=1.5, alpha=0.6, zorder=2)
@@ -152,16 +164,17 @@ for m_i in range(len(model_strs)):
         axes[1, m_i].bar(bin_centres, test_pred_mae, width=bin_widths,
                           color=colours[m_i], alpha=0.7, edgecolor='black')
         
-    axes[0, m_i].text(0.05, 0.95, model_strs[m_i], 
+    axes[0, m_i].text(0.05, 0.95, model_strs[m_i] + ' - \n' + model_strs_2[m_i] + '\n' + model_strs_3, 
                       ha='left', va='top', transform=axes[0, m_i].transAxes)
     
     axes[1, m_i].set_ylim(0.250, 0.650)
-    axes[1, m_i].set_xlabel(y_str)
+    axes[1, m_i].set_xlabel(x_str)
     axes[1, m_i].set_ylabel('MAE [dex]')
     axes[1, m_i].yaxis.set_label_coords(-0.1, 0.5)
-    axes[1, m_i].xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
-    axes[1, m_i].yaxis.set_major_locator(MaxNLocator(nbins=4))
-    axes[0, m_i].yaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+    axes[1, m_i].xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+    axes[1, m_i].yaxis.set_major_locator(MaxNLocator(nbins=2))
+    axes[0, m_i].yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
+    fig.align_ylabels([axes[0, m_i], axes[1, m_i]])
 
     # axes[0, ax_i].grid(True, alpha=0.4, linestyle='--')
     # axes[1, ax_i].grid(True, alpha=0.8, linestyle='--')
@@ -178,16 +191,18 @@ cbar3 = fig.colorbar(hists[2], cax=cbar_ax3, orientation='horizontal')
 cbar4 = fig.colorbar(hists[3], cax=cbar_ax4, orientation='horizontal')
 cbars = [cbar1, cbar2, cbar3, cbar4]
 if log:
-    colour_label = "$\mathrm{Log}_{10}(\mathrm{N_{bin}})$"
+    colour_label = "$\mathrm{log}_{10}(N_\mathrm{gal})$"
 else:
-    colour_label = "$\mathrm{N_{bin}}$"
+    colour_label = "$N_\mathrm{gal}$"
 for cbar in cbars:
     cbar.set_label(colour_label)
     # Move ticks and labels to the top of the colorbar
     cbar.ax.xaxis.set_ticks_position('top')
     cbar.ax.xaxis.set_label_position('top')
-plt.subplots_adjust(top=0.9)  # Leave space at top for colorbars
-
+    cbar.ax.xaxis.labelpad = 100
+    label = cbar.ax.xaxis.get_label()
+    x, y = label.get_position()
+    label.set_position((x, y + 0.5))    
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"

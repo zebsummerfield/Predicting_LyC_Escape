@@ -11,17 +11,20 @@ f_or_n = 0
 # True if model is generated to predict for an observational catalogue 
 obvs = False
 
+# True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
+dusty = True
+
 folder = "final_graph_generation/"
-file = 'cat.hdf5'
+file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
 ratio_vars = ['sfr_full_10', 'sfr_full_100',
               'gas_mass_full', 'stellar_mass_full',
               'stellar_mass_full', 'M_vir_full',
               'uv_lum_int_full', 'ha_lum_int_full',
               'sfr_size_full', 'stellar_size_full']
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, eps=False,
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False,
                                                     add_vars=ratio_vars)
-f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-              '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
+f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
+              '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
 log_target = [log_f_esc, log_n_esc][f_or_n]
 gas_mass = 10**log_vars[-8].astype('float64')
 gas_mass = gas_mass / (0.76 / 1.6735575e-24)
@@ -46,7 +49,7 @@ x_strs = ['$\mathrm{SFR}_{100} \, [\mathrm{M}_\odot \, \mathrm{yr}^{-1}]$',
           '$R_{M_*} \, [\mathrm{kpc}]$']
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 16})
+mpl.rcParams.update({'font.size': 20})
 fig, axes = plt.subplots(2, 3, figsize=(15, 8))
 axes = axes.flatten()
 fig.delaxes(axes[-1])
@@ -62,7 +65,7 @@ for index in range(5):
     y_str = '$\mathrm{log}_{10}$(' + y_strs[index] + ')'
 
     # plots a 2d histogram of x against y where the colour of the bin is dictated by it's mean log_target
-    nbins = 30
+    nbins = (30, 20)[dusty]
     hist, xedges, yedges = np.histogram2d(x, y, bins=nbins, weights=log_target)
     x_width = xedges[1] - xedges[0]
     y_width = yedges[1] - yedges[0]
@@ -72,15 +75,15 @@ for index in range(5):
     hist = hist.T # transposes the histogram for proper orientation
     color_hist = ax.imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]], 
                                 origin='lower', aspect='auto', cmap='viridis', 
-                                vmax=-0.5, vmin=-2.5, interpolation='nearest', zorder=2)
+                                vmax=-0.5, vmin=-2.8, interpolation='nearest', zorder=2)
     ax.set_xlabel(x_str)
     ax.set_ylabel(y_str)
     xrange = max(x) - min(x)
     yrange = max(y) - min(y)
     ax.set_xlim(min(x) - xrange * 0.05, max(x) + xrange * 0.05)
     ax.set_ylim(min(y) - yrange * 0.05, max(y) + yrange * 0.05)
-    ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
-    ax.yaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+    ax.xaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
+    ax.yaxis.set_major_locator(MaxNLocator(nbins=5, integer=True))
 
 
     # contour overlay of the histogram
@@ -94,7 +97,7 @@ for index in range(5):
         theta += np.pi
     if index == 1:
         theta += np.pi
-    if index == 4:
+    if index == 4 or (index == 2 and dusty):
         theta *= -1
     print(f'Arrow Angle : {theta}')
 
@@ -120,7 +123,7 @@ for index in range(5):
                 transform=ax.transAxes, zorder=5)
     
     ax.text(0.05, 0.95, angle_label,
-            ha='left', va='top', fontsize=16,
+            ha='left', va='top', fontsize=18,
             transform=ax.transAxes)
 
     ax.set_box_aspect(1)

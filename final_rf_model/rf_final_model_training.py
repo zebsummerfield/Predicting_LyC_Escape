@@ -6,65 +6,91 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 import json
-from scipy import stats
 import joblib
 from functions_old import *
 
-folder = "final_rf_model/"
-file = 'cat.hdf5'
-
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
+f_or_n = 0
+
 # True if model is generated to predict for an observational catalogue 
-obvs = True
+obvs = False
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
+
+# True for dusty Thesan-Zoom catalogue, False for dust-free catalogue
+dusty = True
+
+# True to use galactic radius instead of virial radius
+gal = False
+
+folder = "final_rf_model/"
+if dusty:
+    file = 'cat_dusttestszeb.hdf5'
+else:
+    file = 'cat.hdf5'
+# file = 'cat_dusttestszeb_mcrtesc.hdf5'
 
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
 
-    f_esc = np.array(hdf['f_esc_vir_full']).astype('float32')
-    n_esc = np.array(hdf['Ndot_LyC_vir_full'])
+    print(len(hdf['f_esc_vir_full']))
 
+    gal_str = ['', '_gal'][gal]
+    if gal:
+        f_esc = np.array(hdf['f_esc_gal_full'])
+        n_esc = np.array(hdf['Ndot_LyC_gal_full'])
+    else:
+        f_esc = np.array(hdf['f_esc_vir_full'])
+        n_esc = np.array(hdf['Ndot_LyC_vir_full'])
     resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
-    star_mass = np.array(hdf['stellar_mass_full'])
-    sfr10 = np.array(hdf['sfr_full_10'])
-    sfr50 = np.array(hdf['sfr_full_50'])
-    sfr100 = np.array(hdf['sfr_full_100'])
+    star_mass = np.array(hdf[f'stellar_mass{gal_str}_full'])
+    sfr10 = np.array(hdf[f'sfr{gal_str}_full_10'])
+    sfr50 = np.array(hdf[f'sfr{gal_str}_full_50'])
+    sfr100 = np.array(hdf[f'sfr{gal_str}_full_100'])
     ssfr10 = ssfr_func(sfr10, star_mass)
     ssfr50 = ssfr_func(sfr50, star_mass)
     ssfr100 = ssfr_func(sfr100, star_mass)
     vir_mass = np.array(hdf['M_vir_full'])
     gas_mass = np.array(hdf['gas_mass_full'])
-    ha_lum = np.array(hdf['ha_lum_int_full']) * 5
-    uv_lum = np.array(hdf['uv_lum_obs_full'])
+    ha_lum = np.array(hdf[f'ha_lum_obs{gal_str}_full']) * 5
     # gas_met = np.array(hdf['gas_met_full'])
     star_met = np.array(hdf['star_met_full'])
     star_size = np.array(hdf['stellar_size_full'])
     sfr_size = np.array(hdf['sfr_size_full'])
-    ha_size = np.array(hdf['ha_size_int_full'])
-    uv_size = np.array(hdf['uv_size_int_full'])
-    uv_projection = np.array(hdf['uv_size_int_2d_full'])
-    ha_projection = np.array(hdf['ha_size_int_2d_full'])
-    uv_size = uv_projection
-    ha_size = ha_projection
+    # ha_size = np.array(hdf['ha_size_obs_full'])
+    # uv_size = np.array(hdf['uv_size_obs_full'])
+    uv_size = np.array(hdf['uv_size_obs_2d_full'])
+    ha_size = np.array(hdf['ha_size_obs_2d_full'])
     sfr10_density = sfr10 / (np.pi * sfr_size**2)
+    print(hdf.keys())
+
+    if dusty:
+        uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_fdust_40_full'])
+        uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_fdust_40_full'])
+    else:
+        uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_full'])
+        uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_full'])
+
     # fixing gas mass units
     gas_mass = gas_mass / (0.76 / 1.6735575e-24)
     gas_mass = gas_mass / 1.989e33
 
     random_variable = np.random.uniform(low=0, high=1, size=(len(f_esc)))
 
-    f_esc_vars = np.array([ssfr10, ssfr100, ssfr100, star_mass, gas_mass, vir_mass, star_met,
-                           uv_lum, ha_lum, uv_size, ha_size,
-                           sfr_size, star_size, sfr10_density, (1+redshift), random_variable])
-    f_esc_keys = np.array(['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass', 'star_mass/vir_mass',
-                           'star_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size', 'ha_size',
-                           'sfr_size', 'sfr_size/star_size', 'sfr10_density', '1 + redshift', 'random_variable'])
-    n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass, star_met, 
-                           uv_lum, ha_lum, (1+redshift), random_variable])
-    n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass', 'star_met', 
-                           'uv_mag', 'ha_lum', '1 + redshift', 'random_variable'])
+    f_esc_vars = np.array([ssfr10, ssfr100, ssfr100, star_mass, gas_mass,
+                           vir_mass, star_met, uv_obs_lum, ha_lum, uv_size,
+                           ha_size, sfr_size, star_size, sfr10_density, uv_int_lum,
+                           (1+redshift), random_variable])
+    f_esc_keys = np.array(['offset10', 'ssfr100', 'ssfr10/ssfr100', 'star_mass', 'gas_mass/star_mass',
+                           'star_mass/vir_mass', 'star_met', 'uv_mag', 'uv_lum/ha_lum', 'uv_size',
+                           'ha_size', 'sfr_size', 'sfr_size/star_size', 'sfr10_density', 'attenuation',
+                           '1 + redshift', 'random_variable'])
+    n_esc_vars = np.array([sfr10, sfr100, star_mass, gas_mass, vir_mass,
+                           star_met, uv_obs_lum, ha_lum, uv_int_lum, (1+redshift),
+                           random_variable])
+    n_esc_keys = np.array(['sfr10', 'sfr100', 'star_mass','gas_mass/star_mass', 'star_mass/vir_mass',
+                           'star_met', 'uv_mag', 'ha_lum', 'attenuation', '1 + redshift',
+                           'random_variable'])
     
     # adds a small epsilon to the variables to avoid log(0) errors
     eps_frac = 0.01
@@ -93,15 +119,17 @@ with h5py.File(file, 'r') as hdf:
 
     # replaces ssfr10 with offset from the star forming main sequence over 10Myrs
     log_osfms10 =  log_f_esc_vars[0] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[0], b[0], u[0])
-    #log_osfms100 =  log_f_esc_vars[-1] - sfms_func(np.array([redshift, np.log10(star_mass)]), s[1], b[1], u[1])
     log_f_esc_vars[0] = log_osfms10.astype('float32')
-    #log_f_esc_vars[-1] = log_osfms100.astype('float32')
 
     # replaces the UV luminosities with magnitudes
     lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
-    uv_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
-    log_f_esc_vars[7] = uv_mag.astype('float32')
-    log_n_esc_vars[6] = uv_mag.astype('float32')
+    uv_obs_mag = -2.5 * np.log10((n_esc_vars[6]) / lum_to_tenpc) - 48.6
+    uv_int_mag = -2.5 * np.log10((n_esc_vars[8]) / lum_to_tenpc) - 48.6
+    attenuation = uv_obs_mag - uv_int_mag
+    log_f_esc_vars[7] = uv_obs_mag.astype('float32')
+    log_f_esc_vars[14] = attenuation.astype('float32')
+    log_n_esc_vars[6] = uv_obs_mag.astype('float32')
+    log_n_esc_vars[8] = attenuation.astype('float32')
 
     vars = [f_esc_vars, n_esc_vars][f_or_n]
     log_vars = [log_f_esc_vars, log_n_esc_vars][f_or_n]
@@ -109,14 +137,14 @@ with h5py.File(file, 'r') as hdf:
 
     # selects only the variables that are present in the observational catalogue
     if obvs and obvs_cat == 'lola':
-        f_esc_selected_vars = [0, 2, 3, 7, 8, 9, 10, 14, 15]
-        n_esc_selected_vars = [0, 1, 2, 6, 7, 8, 9]
+        f_esc_selected_vars = [0, 2, 3, 7, 8, 9, 10, 15, 16]
+        n_esc_selected_vars = [0, 1, 2, 6, 7, 9, 10]
     elif obvs and obvs_cat == 'charlotte':
-        f_esc_selected_vars = [0, 2, 3, 7, 14, 15]        
-        n_esc_selected_vars = [0, 1, 2, 6, 8, 9]
+        f_esc_selected_vars = [0, 2, 3, 7, 15, 16]        
+        n_esc_selected_vars = [0, 1, 2, 6, 9, 10]
     else:
-        f_esc_selected_vars = [0,2,3,4,5,6,7,8,9,10,11,12,13,14,15]
-        n_esc_selected_vars = [0,1,2,3,4,5,6,7,8,9]
+        f_esc_selected_vars = [0,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
+        n_esc_selected_vars = [0,1,2,3,4,5,6,7,8,9,10]
     selected_vars = [f_esc_selected_vars, n_esc_selected_vars][f_or_n]
     keys = keys[selected_vars]
     vars = vars[selected_vars]
@@ -126,9 +154,10 @@ with h5py.File(file, 'r') as hdf:
     # removes any rows that have zero ,unity or infinity for the vars and f_esc
     # ssfr50 is included to remove galaxies that have had no recent star formation
     f_esc[np.isnan(f_esc)] = 0
+    n_esc[np.isnan(n_esc)] = 0
     bad_indices = []
-    for i in range(len(np.concatenate((log_vars, [f_esc], [ssfr50])))):
-        b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc], [ssfr50]))[i]))
+    for i in range(len(np.concatenate((log_vars, [f_esc, n_esc], [ssfr50])))):
+        b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc, n_esc], [ssfr50]))[i]))
                         if (val == 0 or val == 1 or val == np.inf or val== -np.inf)]
         print(f"feature {i+1} bad rows: {len(b_i)}")
         bad_indices += b_i
@@ -146,8 +175,8 @@ with h5py.File(file, 'r') as hdf:
     print(f'rows remaining: {len(f_esc)}')
     log_f_esc = np.log10(f_esc).astype('float32')
     log_n_esc = np.log10(n_esc).astype('float32')
-    print(np.mean(f_esc))
-    print(np.mean(n_esc))
+    print(f'mean f_esc: {np.mean(f_esc)}')
+    print(f'mean n_esc: {np.mean(n_esc)}')
 
     # each row contains the data for a single galaxy
     X = np.transpose(log_vars)
@@ -164,26 +193,11 @@ for i in range(n):
 
     x_train, x_test, y_train, y_test, res_train, res_test = train_test_split(
         X, Y, resolution, test_size=0.25)
-
-    # # carries out rejection sampling to cap the density of the f_esc distribution
-    # height_fraction = 1
-    # mean = np.mean(y_train)
-    # std = np.std(y_train)
-    # density_threshold = height_fraction * stats.norm.pdf(mean, mean, std)
-    # accepted_samples, rejected_samples = ([], [])
-    # for index in range(len(y_train)):
-    #     density = stats.norm.pdf(y_train[index], mean, std)
-    #     if np.random.random() < density_threshold/density:
-    #         accepted_samples.append(index)
-    #     else:
-    #         rejected_samples.append(index)
-    # x_train = x_train[accepted_samples]
-    # y_train = y_train[accepted_samples]
         
     # random forest training with the test data
-    rf = RandomForestRegressor(n_estimators=210, random_state=i, n_jobs=-1,
-                               min_samples_leaf=50, max_features='sqrt', 
-                               criterion='squared_error')
+    rf = RandomForestRegressor(# random_state=i,
+                               n_estimators=210, n_jobs=-1, min_samples_leaf=50,
+                               max_features='sqrt', criterion='squared_error')
     rf.fit(x_train, y_train)
     y_test_pred = rf.predict(x_test)
     y_train_pred =  rf.predict(x_train)
@@ -225,13 +239,15 @@ for index, v in enumerate(keys):
 
 f_or_n_str = ['f_esc', 'n_esc'][f_or_n]
 obvs_str = ['final', 'observational'][obvs] + ['', f'_{obvs_cat}'][obvs]
+dust_str = ['', '_dusty'][dusty]
+testing = '_test'  # '_test' or ''
 # saves the best rf data to a json file
-with open(folder+f'{f_or_n_str}_rf_{obvs_str}_test_train.json', 'w') as f:
+with open(folder+f'{f_or_n_str}_rf_{obvs_str}{dust_str}_test_train{testing}.json', 'w') as f:
     best_rf_data['std_importances'] = np.std(importances_list, axis=0).tolist()
     json.dump(best_rf_data, f)
 # saves the rf model to a pickle file
 if obvs:
-    joblib.dump(best_rf, folder+f'{f_or_n_str}_rf_{obvs_str}_model.pkl')
+    joblib.dump(best_rf, folder+f'{f_or_n_str}_rf_{obvs_str}{dust_str}_model{testing}.pkl')
 
 mpl.rcParams.update({'font.size': 16})
 fig, ax = plt.subplots(figsize=(12,6))

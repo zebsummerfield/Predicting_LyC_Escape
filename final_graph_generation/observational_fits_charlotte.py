@@ -33,6 +33,8 @@ if not dusty:
 else:
     file5 = folder + 'f_esc_rf_observational_charlotte_dusty_test_train.json'
     file6 = folder + 'n_esc_rf_observational_charlotte_dusty_test_train.json'
+# file5 = folder + 'f_esc_rf_observational_charlotte_dusty_test_train_test.json'
+# file6 = folder + 'n_esc_rf_observational_charlotte_dusty_test_train_test.json'
 
 with fits.open("prosp_properties_GOODSS.fits") as hdul1:
     data1 = {name: hdul1[1].data[name] for name in hdul1[1].data.columns.names}
@@ -99,18 +101,37 @@ obvs_star_mass_high_error = np.delete(np.array(obvs_data['log(Mstar)_ehi']), bad
 obvs_star_mass_low_error = np.delete(np.array(obvs_data['log(Mstar)_elo']), bad_indices)
 obvs_uv_mag_high_error = np.delete(np.array(obvs_data['M1500obs_ehi']), bad_indices)
 obvs_uv_mag_low_error = np.delete(np.array(obvs_data['M1500obs_elo']), bad_indices)
+obvs_redshift_high_error = np.delete(np.array(obvs_data['z_ehi']), bad_indices)
+obvs_redshift_low_error = np.delete(np.array(obvs_data['z_elo']), bad_indices)
 print(f'rows remaining: {len(obvs_redshift)}')
 
 log_vars = [obvs_log_f_esc_vars, obvs_log_n_esc_vars]
 keys = [obvs_f_esc_keys, obvs_n_esc_keys]
 print(keys)
 
+# Print 99.7% ranges for M_UV and stellar mass
+muv_low = np.percentile(obvs_log_f_esc_vars[3], 0.15)
+muv_high = np.percentile(obvs_log_f_esc_vars[3], 99.85)
+print(f"M_UV 99.7% range: [{muv_low:.2f}, {muv_high:.2f}]")
+
+stellar_mass_low = np.percentile(obvs_log_f_esc_vars[2], 0.15)
+stellar_mass_high = np.percentile(obvs_log_f_esc_vars[2], 99.85)
+print(f"log10(M*) 99.7% range: [{stellar_mass_low:.2f}, {stellar_mass_high:.2f}]")
+
 def linear_1var(p, X):
     a, b = p
     return a * X + b
 
-def curve_fit_func(X, a, b):
+def linear_2var(p, X):
+    a, b, c = p
+    x, z = X
+    return a * x + b * z + c
+
+def curve_fit_func_1var(X, a, b):
     return linear_1var((a, b), X)
+
+def curve_fit_func_2var(X, a, b, c):
+    return linear_2var((a, b, c), X)
 
 def round_to_error(value, error):
     if error == 0:
@@ -127,7 +148,8 @@ def round_to_error(value, error):
 
 
 plt.style.use('./MNRAS_Style.mplstyle')
-mpl.rcParams.update({'font.size': 18})
+mpl.rcParams.update({'font.size': 22})
+mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
 # sorts the data by redshift for plotting
@@ -136,29 +158,29 @@ sorted_indices = np.argsort(obvs_redshift)
 for i_1 in range(len(axes)):
 
     x = [obvs_log_f_esc_vars[3], obvs_log_f_esc_vars[2]][i_1]
-    print(min(x), max(x))
-    x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
-    x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
-    x_range = (([-28, -10], [5, 12])[i_1], ([-24, -12], [6, 11])[i_1])[histogram]
+    x_str = ['$M_\mathrm{UV}$', '$\mathrm{log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
+    x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{log}_{10}(M_{*})$'][i_1]
+    x_range = (([-27, -11], [5, 12])[i_1], ([-23, -13], [6, 11])[i_1])[histogram]
 
     for i_2 in range(len(axes)):
         ax = axes[i_2, i_1]
-        y_range = (([-3.5, -0.5], [48, 55])[i_2], ([-3.25, -0.75], [48.5, 54.5])[i_2])[histogram]
+        y_range = (([-3.75, -0.75], [47.5, 54.5])[i_2], ([-3.75, -0.75], [47.5, 54.5])[i_2])[histogram]
 
         # each row contains the data for a single galaxy
         X = np.transpose(log_vars[i_2])
 
         # run target prediction using loaded model
-        f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                      '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
-        f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                              '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
+        f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
+                      '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
+        f_or_n_str_no_unit = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
+                              '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
         print((x_str_no_unit, f_or_n_str_no_unit))
 
         if not dusty:
             loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_model.pkl')
         else:
             loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_dusty_model.pkl')
+        # loaded_model = joblib.load(folder + ['f_esc', 'n_esc'][i_2] + '_rf_observational_charlotte_dusty_model_test.pkl')   
         predictions = loaded_model.predict(X)
 
         with open((file5, file6)[i_2], 'r') as json_data:
@@ -189,6 +211,10 @@ for i_1 in range(len(axes)):
         x_err_low = [np.abs(obvs_uv_mag_low_error), np.abs(obvs_star_mass_low_error)][i_1]
         x_err_high = [np.abs(obvs_uv_mag_high_error), np.abs(obvs_star_mass_high_error)][i_1]
         x_err_sym = (x_err_low + x_err_high) / 2
+        z = obvs_redshift
+        log_z = np.log10(1 + z)
+        z_err_sym = (obvs_redshift_low_error + obvs_redshift_high_error) / 2
+        log_z_err_sym = z_err_sym / (np.log(10) * (1 + z))
 
         if mc:
             # Monte Carlo to estimate fit parameter uncertainties
@@ -206,7 +232,7 @@ for i_1 in range(len(axes)):
 
                 if least_squares:
                     # Fit using Weighted Least Squares Regression, accounting only for y errors
-                    popt, _ = curve_fit(curve_fit_func, xb, yb, sigma=y_err[idx], absolute_sigma=True)
+                    popt, _ = curve_fit(curve_fit_func_1var, xb, yb, sigma=y_err[idx], absolute_sigma=True)
                     betas[k] = popt[0], popt[1]
                 
                 else:
@@ -227,25 +253,54 @@ for i_1 in range(len(axes)):
         else:
             if least_squares:
                 # Fit using Weighted Least Squares Regression, accounting only for y errors
-                popt, pcov = curve_fit(curve_fit_func, x, y, sigma=y_err, absolute_sigma=True)
+                popt, pcov = curve_fit(curve_fit_func_1var, x, y, sigma=y_err, absolute_sigma=True)
                 a, b = popt
-                a_err, b_err = np.sqrt(np.diag(pcov))
+                a_err, b_err= np.sqrt(np.diag(pcov))
+
+                # Print fit parameters for Weighted Least Squares Regression including redshift dependence
+                popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, log_z), y, sigma=y_err, absolute_sigma=True)
+                a_2, b_2, c_2 = popt_2
 
             else:
                 # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
                 x_err_median = np.nanmedian(x_err_sym[x_err_sym > 0]) * 1e-6
                 x_err_sym[x_err_sym <= 0] = x_err_median
+                z_err_median = np.nanmedian(z_err_sym[z_err_sym > 0]) * 1e-6
+                z_err_sym[z_err_sym <= 0] = z_err_median
+                log_z_err_median = np.nanmedian(log_z_err_sym[log_z_err_sym > 0]) * 1e-6
+                log_z_err_sym[log_z_err_sym <= 0] = log_z_err_median
+                
                 model = odr.Model(linear_1var)
                 data = odr.RealData(x, y, sx=x_err_sym, sy=y_err)
-                odr_inst = odr.ODR(data, model, beta0=[0, np.median(y)])
+                odr_inst = odr.ODR(data, model, beta0=[0, 0])
                 out = odr_inst.run()
 
                 a, b = out.beta
                 a_err, b_err = out.sd_beta 
                 pcov = out.cov_beta
 
-        x_fit = np.linspace(x_range[0], x_range[1], 100)
-        y_fit = linear_1var((a, b), x_fit)
+                # Print fit parameters for Orthogonal Distance Regression including redshift dependence
+                model_2 = odr.Model(linear_2var)
+                data_2 = odr.RealData((x, log_z), y, sx=(x_err_sym, log_z_err_sym), sy=y_err)
+                odr_inst_2 = odr.ODR(data_2, model_2, beta0=[0, 0, 0])
+                out_2 = odr_inst_2.run()
+
+                a_2, b_2, c_2 = out_2.beta
+                a_2_err, b_2_err, c_2_err = out_2.sd_beta
+                pcov_2 = out_2.cov_beta
+                scale = out_2.sd_beta / np.sqrt(np.diag(pcov_2))
+                pcov_2 *= np.outer(scale, scale)
+
+            a_2_err, b_2_err, c_2_err = np.sqrt(np.diag(pcov_2))
+            a_2_str, a_2_err_str = round_to_error(a_2, a_2_err)
+            b_2_str, b_2_err_str = round_to_error(b_2, b_2_err)
+            c_2_str, c_2_err_str = round_to_error(c_2, c_2_err)
+            print((
+                rf'log10({["f_esc", "n_ion,esc"][i_2]}) = '
+                rf'({a_2_str}±{a_2_err_str}){["Muv", "M*"][i_1]} + '
+                rf'({b_2_str}±{b_2_err_str})log10(1+z) + '
+                rf'({c_2_str}±{c_2_err_str})'
+            ))
 
         if residuals:
             y_residuals = y - linear_1var((a, b), x)
@@ -255,7 +310,7 @@ for i_1 in range(len(axes)):
                                             vmin=3, vmax=9
                                             )
             # adds a horizontal line at y=0
-            fit = ax.axhline(0, c='teal', alpha=0.8, zorder=4)
+            fit = ax.axhline(0, c='darkcyan', alpha=0.8, zorder=4)
         
             # seperates the galaxies into bins of x with each containing equal numbers of galaxies
             nbins = 25
@@ -308,26 +363,54 @@ for i_1 in range(len(axes)):
                                origin='lower', aspect='auto', cmap='magma', interpolation='nearest', zorder=1)
 
             # Plots the best fit line with confidence bands (regions of possible fit based on parameter errors)
-            fit = ax.plot(x_fit, y_fit, c='teal', linewidth=2, alpha=0.8, zorder=4)
+            if not mc and i_2 == 1:
+                x_fit = np.linspace(x_range[0], x_range[1], 100)
+                y_fit = linear_1var((a, b), x_fit)
+                fit = ax.plot(x_fit, y_fit, c='darkcyan', linewidth=3, alpha=0.8, zorder=4)
 
-            n_std = 5
-            y_upper = np.zeros_like(x_fit)
-            y_lower = np.zeros_like(x_fit)
-            for i, xi in enumerate(x_fit):
-                x_vec = np.array([xi, 1])
-                var_y = x_vec @ pcov @ x_vec
-                std_error = np.sqrt(var_y)
-                y_upper[i] = y_fit[i] + n_std * std_error
-                y_lower[i] = y_fit[i] - n_std * std_error
-            ax.fill_between(x_fit, y_lower, y_upper, color='teal', alpha=0.4, zorder=4,
-                        label='95% Confidence Band')
-            
-            # adding fit parameters as text to the graph
-            a_str, a_err_str = round_to_error(a, a_err)
-            b_str, b_err_str = round_to_error(b, b_err)
-            fit_label = f'{f_or_n_str_no_unit} = ({a_str}$\pm${a_err_str}) {x_str_no_unit} + ({b_str}$\pm${b_err_str})'
-            ax.text(0.05, 0.025, fit_label, ha='left', va='bottom',
-                    transform=ax.transAxes, fontsize=14, color=('black', 'white')[histogram])
+                # confidence bands using covariance matrix from fit
+                # n_std = 5
+                # y_upper = np.zeros_like(x_fit)
+                # y_lower = np.zeros_like(x_fit)
+                # for i, xi in enumerate(x_fit):
+                #     x_vec = np.array([xi, 1])
+                #     var_y = x_vec @ pcov @ x_vec
+                #     std_error = np.sqrt(var_y)
+                #     y_upper[i] = y_fit[i] + n_std * std_error
+                #     y_lower[i] = y_fit[i] - n_std * std_error
+                # ax.fill_between(x_fit, y_lower, y_upper, color='darkcyan', alpha=0.4, zorder=4,
+                #             label='95% Confidence Band')
+                
+                # adding fit parameters as text to the graph
+                A, B = a_2, b_2
+                A_err, B_err = a_2_err, b_2_err
+                if i_1 == 0:
+                    # Muv fit
+                    C = c_2 - 20*a_2 + np.log10(7) * b_2  # normalizing at Muv = -20 and z = 6
+                    # TC = np.array([-20, np.log10(7), 1])
+                    # C_err = np.sqrt(TC @ pcov_2 @ TC.T)
+                    C_err = np.sqrt(c_2_err**2 + (-20 * a_2_err)**2 + (np.log10(7) * b_2_err)**2)
+                else:
+                    # stellar mass fit
+                    C = c_2 + 10*a_2 + np.log10(7) * b_2  # normalizing at log10(M*) = 10 and z = 6
+                    # TC = np.array([10, np.log10(7), 1])
+                    # C_err = np.sqrt(TC @ pcov_2 @ TC.T)
+                    C_err = np.sqrt(c_2_err**2 + (10 * a_2_err)**2 + (np.log10(7) * b_2_err)**2)
+
+                A_str, A_err_str = round_to_error(A, A_err)
+                B_str, B_err_str = round_to_error(B, B_err)
+                C_str, C_err_str = round_to_error(C, C_err)
+                # z_str = r'$\mathrm{log}_{10}\left(\frac{1+z}{7}\right)$'
+                z_str = r'$\mathrm{log}_{10}((1+z)/7)$'
+                fit_label = (
+                    r"$\begin{aligned}"
+                    f"{f_or_n_str_no_unit.replace('$', '')} &= ({A_str}\\pm{A_err_str})({x_str_no_unit.replace('$', '')} {['+ 20', '- 10'][i_1]}) \\\\"
+                    f"&+ ({B_str}\\pm{B_err_str}){z_str.replace('$', '')} \\\\"
+                    f"&+ ({C_str}\\pm{C_err_str})"
+                    r"\end{aligned}$"
+                )
+                ax.text(0.025, 0.025, fit_label, ha='left', va='bottom',
+                        transform=ax.transAxes, fontsize=16, color=('black', 'white')[histogram])
         
             # axes setup
             if i_2 == 1:
@@ -350,7 +433,7 @@ if not histogram:
     cbar.set_label("$z$", labelpad=10)
 else:
     cbar = fig.colorbar(h_plot, ax=axes, orientation='vertical', aspect=30, pad=0.03)
-    cbar.set_label("Number of Galaxies in Bin", labelpad=5)
+    cbar.set_label("$N_\mathrm{gal}$", labelpad=5)
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
