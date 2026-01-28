@@ -32,8 +32,6 @@ else:
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
 
-    print(len(hdf['f_esc_vir_full']))
-
     gal_str = ['', '_gal'][gal]
     if gal:
         f_esc = np.array(hdf['f_esc_gal_full'])

@@ -1,6 +1,7 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
+from sympy import Line2D
 from functions import *
 import numpy as np
 from matplotlib.ticker import MaxNLocator
@@ -8,10 +9,19 @@ import pickle
 from scipy.integrate import solve_ivp, cumtrapz
 
 # Set to True to plot ionisation fraction Q, False to plot optical depth tau
-Q_plot = False
+Q_plot = True
 
 # Set to True to compare Q evolutions for different sigma_M_uv values
 sigma_compare = False
+
+# Set to True to compare Q evolutions for different N_ion integration M_uv_max values
+muvmax_compare = True
+
+# Set to True to compare Q evolutions for different N_ion integration M_uv_min values
+muvmin_compare = False
+
+# Set to True to include f_esc constant splines when comparing muvmax
+include_f_esc_const = True
 
 Y = 0.24668
 X = 1 - Y
@@ -24,7 +34,7 @@ H_0 = 2.195e-18 # s^-1
 c = 2.998e10 # cm/s
 sigma_T = 6.65246e-25 # cm^2
 
-folder = "final_graph_generation/"
+folder = "final_graph_generation/splines/"
 with open(folder + "thesan_uv_N_ion_spline_sch.pkl", "rb") as f:
     thesan_spline = pickle.load(f)
 with open(folder + "thesan_uv_N_ion_spline_high_sch.pkl", "rb") as f:
@@ -72,20 +82,45 @@ def tau(q_sol):
     tau = const * cumtrapz(integrand, z, initial=0)
     return z, tau
 
-# solves the ODE for ionisation fraction as a function of redshift
+# loads the N_ion splines and solves the ODE for ionisation fraction as a function of redshift
+if sigma_compare:
+    splines = []
+    sigmas = [0.4, 0.6, 0.8, 1.0, 1.2, 1.4][::-1]
+    for sigma in sigmas:
+        with open(folder + f"observational_uv_N_ion_spline_sch_{str(sigma)}.pkl", "rb") as f:
+            sigma_spline = pickle.load(f)
+        splines.append(sigma_spline)
+
+elif muvmax_compare:
+    splines = []
+    mag_range = (-10, -17)
+    abs_mag_list = list(range(abs(mag_range[0]), abs(mag_range[1]) + 1))
+    for mag in abs_mag_list:
+        with open(folder + f"thesan_N_ion_magmin_33_magmax_{mag}.pkl", "rb") as f:
+            magmax_spline = pickle.load(f)
+        splines.append(magmax_spline)
+    if include_f_esc_const:
+        for mag in abs_mag_list:
+            with open(folder + f"f_esc_const_N_ion_magmin_33_magmax_{mag}.pkl", "rb") as f:
+                magmax_spline = pickle.load(f)
+            splines.append(magmax_spline)
+
+elif muvmin_compare:
+    splines = []
+    mag_range = (-35, -25)
+    abs_mag_list = list(range(abs(mag_range[1]), abs(mag_range[0]) + 1))[::-1]
+    for mag in abs_mag_list:
+        with open(folder + f"thesan_N_ion_magmin_{mag}_magmax_13.pkl", "rb") as f:
+            magmin_spline = pickle.load(f)
+        splines.append(magmin_spline)
+
+else:
+    splines = [thesan_spline, thesan_spline_high, thesan_spline_low,
+        observational_spline, observational_spline_high, observational_spline_low]   
+
 Q_initial = 0.0
 z_initial, z_final = 20, 0
 sols = []
-if not sigma_compare:
-    splines = [thesan_spline, thesan_spline_high, thesan_spline_low,
-               observational_spline, observational_spline_high, observational_spline_low]
-else:
-    splines = []
-    sigmas = [0.4, 0.6, 0.8, 1.0, 1.2, 1.4]
-    for sigma in sigmas:
-        with open(f"final_graph_generation/observational_uv_N_ion_spline_sch_{str(sigma)}.pkl", "rb") as f:
-            sigma_spline = pickle.load(f)
-        splines.append(sigma_spline)
 for spl in splines:
     sol = solve_ivp(fun = lambda z, Q: dQ_dz(z, Q, spl),
                     t_span=[z_initial, z_final], y0=[Q_initial],
@@ -113,15 +148,45 @@ print(f"  JWST: Q = {jwst_Q_at_8:.4f}")
 
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 24})
-fig, ax = plt.subplots(figsize=[(8, 6), (8, 8)][Q_plot])
+fig, ax = plt.subplots(figsize=[(8, 6), [(8, 8), (12, 8)][include_f_esc_const]][Q_plot])
+cmap1 = plt.get_cmap('inferno')
+cmap2 = plt.get_cmap('viridis')
+colours2 = cmap2(np.linspace(0.2, 0.8, len(sols)))[::-1]
 
 if Q_plot == True:
 
     if sigma_compare:
-        colours = list(tableau20.values())
+        colours = cmap1(np.linspace(0.2, 0.8, len(sols)))[::-1]
         for index in range(len(sols)):
-            ax.plot(sols[index].t, sols[index].y[0], label=f'$\sigma_{{\dot{{n}}}}$ = {sigmas[index]}', linewidth=2, c=colours[index*2])
-            print(f"For sigma_n = {sigmas[index]}: Reionisation completes at z =", sols[index].t[np.where(sols[index].y[0] >= 1)[0][0]])
+            ax.plot(sols[index].t, sols[index].y[0], label=f'$\sigma_{{\dot{{n}}}}$ = {sigmas[index]}',
+                    linewidth=2, c=colours[index])
+            print(f"For sigma_n = {sigmas[index]}: Reionisation completes at z =",
+                  sols[index].t[np.where(sols[index].y[0] >= 1)[0][0]])
+
+    elif muvmax_compare:
+        thesan_lines = []
+        f_esc_const_lines = []
+        num_mags = len(abs_mag_list)
+        colours1 = cmap1(np.linspace(0.2, 0.8, num_mags))[::-1]
+        colours2 = cmap2(np.linspace(0.2, 0.8, num_mags))[::-1]
+        for index in range(num_mags):
+            line = ax.plot(sols[index].t, sols[index].y[0], label=f'$M_\mathrm{{UV,max}}$ = -{abs_mag_list[index]}',
+                           linewidth=2, c=colours1[index])[0]
+            thesan_lines.append(line)
+            print(f"For M_UV_max = -{abs_mag_list[index]}: Reionisation completes at z =",
+                  sols[index].t[np.where(sols[index].y[0] >= 1)[0][0]])
+            if include_f_esc_const:
+                line = ax.plot(sols[num_mags + index].t, sols[num_mags + index].y[0], label=f'$M_\mathrm{{UV,max}}$ = -{abs_mag_list[index]}',
+                               linewidth=2, c=colours2[index], linestyle='--')[0]
+                f_esc_const_lines.append(line)
+
+    elif muvmin_compare:
+        colours = cmap1(np.linspace(0.2, 0.8, len(sols)))[::-1]
+        for index in range(len(abs_mag_list)):
+            ax.plot(sols[index].t, sols[index].y[0], label=f'$M_\mathrm{{UV,min}}$ = -{abs_mag_list[index]}',
+                    linewidth=2, c=colours[index])
+            print(f"For M_UV_min = -{abs_mag_list[index]}: Reionisation completes at z =",
+                  sols[index].t[np.where(sols[index].y[0] >= 1)[0][0]])
 
     else:
         # plots the ionisation fraction with uncertainty range
@@ -219,9 +284,31 @@ if Q_plot == True:
     ax.grid(False)
     ax.set_xlabel('$z$')
     ax.set_ylabel('$Q_\mathrm{HII}$')
-    legend = plt.legend(fontsize=(20, 24)[sigma_compare], loc='upper right', bbox_to_anchor=(1.00, 1.00), frameon=False)
 
-else:
+    if not include_f_esc_const:
+        legend = plt.legend(fontsize=(20, 24)[sigma_compare], loc='upper right', bbox_to_anchor=(1.00, 1.00), frameon=False)
+    else:
+        header_thesan = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
+        header_text_thesan = ax.text(1.195, 0.94, r'$\textsc{thesan-zoom}$-based:', fontsize=16,
+                                     transform=ax.transAxes, ha='center', va='center', zorder=5)
+        header_f_esc_const_1 = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
+        header_f_esc_const_2 = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
+        header_text_f_esc_const = ax.text(1.195, 0.47, r'$f_\mathrm{esc} = 10$\%:', fontsize=16,
+                                          transform=ax.transAxes, ha='center', va='center', zorder=5)
+        handles = [header_thesan, *thesan_lines, header_f_esc_const_1, header_f_esc_const_2, *f_esc_const_lines]
+        labels = [h.get_label() for h in handles]
+        legend = ax.legend(handles, labels, alignment='center', handlelength=1.2,handletextpad=0.6, borderpad=1.4, labelspacing=0.4,
+                           fontsize=16, loc='center left', bbox_to_anchor=(1.05, 0.5), borderaxespad=0)
+        legend.set_zorder(4)
+        for text in legend.get_texts():
+                text.set_ha('center')
+        frame = legend.get_frame()
+        frame.set_edgecolor('black')
+        frame.set_boxstyle('Square')
+        frame.set_alpha(0.8)
+        plt.subplots_adjust(right=0.7)
+
+elif sigma_compare == False and muvmax_compare == False and muvmin_compare == False:
 
     z, thesan_tau_z = tau(sols[0])
     _, thesan_tau_z_low = tau(sols[2])
@@ -235,7 +322,7 @@ else:
     planck_tau_err_high = 0.0070
     planck_tau_err_low = 0.0081
     ax.fill_between(z, planck_tau - 2*planck_tau_err_low, planck_tau + 2*planck_tau_err_high,
-                    color='#6E6E6E', edgecolor='#3E3E3E', alpha=0.2, label='Planck+2018', zorder=2)
+                    color='#6E6E6E', edgecolor='#3E3E3E', alpha=0.15, label='Planck+2018', zorder=2)
 
     # heinrich_tau = 0.0619
     # heinrich_tau_err_high = 0.0056
@@ -243,9 +330,9 @@ else:
     # ax.fill_between(z, heinrich_tau - 2*heinrich_tau_err_low, heinrich_tau + 2*heinrich_tau_err_high,
     #                 color='#2A9D8F', edgecolor='#146A5A', alpha=0.2, label='Heinrich+2021', zorder=2)
 
-    ax.plot(z, thesan_tau_z, label=r'$\textsc{thesan-zoom}$-based', color='darkviolet', zorder=3)
-    ax.fill_between(z, thesan_tau_z_low, thesan_tau_z_high, color='darkviolet', alpha=0.2, zorder=3)
-    ax.plot(z, obvs_tau_z, label=r'JWST-based', color='darkcyan', linestyle='--', zorder=3)
+    ax.plot(z, thesan_tau_z, label=r'$\textsc{thesan-zoom}$-based', linewidth=3, color='darkviolet', zorder=3)
+    ax.fill_between(z, thesan_tau_z_low, thesan_tau_z_high, color='darkviolet', alpha=0.15, zorder=3)
+    ax.plot(z, obvs_tau_z, label=r'JWST-based', linewidth=3, color='darkcyan', linestyle='--', zorder=3)
 
     ax.set_ylim(0, 0.08)
     ax.set_xlim(4, 16)

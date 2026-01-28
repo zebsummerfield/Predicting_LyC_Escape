@@ -58,8 +58,8 @@ with h5py.File(file, 'r') as hdf:
                      uv_obs/uv_lum, ha_size/uv_size])
 
     #variables we are investigating for an f_esc relationship
-    x = np.array(hdf['uv_lum_int_fdust_40_full'])
-    y = np.array(hdf['uv_lum_obs_fdust_40_full'])
+    x = uv_lum
+    y = gas_mass / star_mass
 
     # removes any rows that have zero, nan or infinity for the x, y, ssfr10, f_esc and n_esc
     for i in range(len(np.concatenate(([x, y], [f_esc, n_esc])))):

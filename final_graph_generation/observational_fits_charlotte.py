@@ -21,7 +21,7 @@ mc = False
 residuals = False
 
 # True for 2D histogram, False for scatter plot
-histogram = False
+histogram = True
 
 # Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
 dusty = True
@@ -345,7 +345,7 @@ for i_1 in range(len(axes)):
                                             elinewidth=0.2, zorder=2, rasterized=True)
                 
                 scatter = ax.scatter(x[sorted_indices], y[sorted_indices], alpha=0.9, c=obvs_redshift[sorted_indices],
-                                     cmap='inferno', s=1, zorder=3, rasterized=True,
+                                     cmap='magma', s=1, zorder=3, rasterized=True,
                                      vmin=3, vmax=9
                                      )
 
@@ -360,7 +360,7 @@ for i_1 in range(len(axes)):
                 # hist = np.log10(hist)
                 hist[hist == -np.inf] = 0
                 h_plot = ax.imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
-                               origin='lower', aspect='auto', cmap='magma', interpolation='nearest', zorder=1)
+                               origin='lower', aspect='auto', cmap='inferno', interpolation='nearest', zorder=1)
 
             # Plots the best fit line with confidence bands (regions of possible fit based on parameter errors)
             if not mc and i_2 == 1:
@@ -404,8 +404,8 @@ for i_1 in range(len(axes)):
                 z_str = r'$\mathrm{log}_{10}((1+z)/7)$'
                 fit_label = (
                     r"$\begin{aligned}"
-                    f"{f_or_n_str_no_unit.replace('$', '')} &= ({A_str}\\pm{A_err_str})({x_str_no_unit.replace('$', '')} {['+ 20', '- 10'][i_1]}) \\\\"
-                    f"&+ ({B_str}\\pm{B_err_str}){z_str.replace('$', '')} \\\\"
+                    f"{f_or_n_str_no_unit.replace('$', '')} &= ({A_str}\\pm{A_err_str}) \, ({x_str_no_unit.replace('$', '')} {['+ 20', '- 10'][i_1]}) \\\\"
+                    f"&+ ({B_str}\\pm{B_err_str}) \, {z_str.replace('$', '')} \\\\"
                     f"&+ ({C_str}\\pm{C_err_str})"
                     r"\end{aligned}$"
                 )

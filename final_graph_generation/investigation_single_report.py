@@ -13,13 +13,17 @@ obvs = False
 # True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
 dusty = True
 
+# True to plot median lines for different redshift bins
+redshift_bins = True
+
 folder = "final_graph_generation/"
 file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False)
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False, add_vars=['redshift_full'])
 
 print(keys)
 x_index = 6  # index of M_UV in log_vars
 log_x = log_vars[x_index]
+z = 10**log_vars[-1]
 
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 15})
@@ -60,9 +64,44 @@ for ax_i in range(len(axes)):
         y_16th.append(np.percentile(log_y[bin_mask], 16))
         y_84th.append(np.percentile(log_y[bin_mask], 84))
 
-    # plots the median of log_x against the median of log_y for each bin
-    axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$")
-    axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="16th-84th percentile", zorder=5)
+    # plots the median of log_x against the median of log_y for each bin as well as the 1 sigma range
+    #axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
+    axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="P16 -- P84", zorder=4)
+
+    # splits the galaxies into three redshift and plots median lines for each redshift bin
+    if redshift_bins:
+        bin_strs = [ '$3 \\leq z < 5$', '$5 \\leq z < 8$', '$8 \\leq z \\leq 16$']
+        # colours = [
+        #     "#041E42",  # very dark navy
+        #     "#2B6CE4",  # vivid cobalt blue
+        #     "#8A2BE2",  # electric violet
+        # ]
+        colours = [
+            "#2b0000",  # near-black blood red
+            "#8b0000",  # classic dark red
+            "#ff7a1a",  # strong dark orange (clearly lighter)
+        ]
+        z_bin_indices = np.digitize(z, (3, 5, 8, 16)) - 1
+        log_x_z_bins = [log_x[z_bin_indices == i] for i in range(3)]
+        log_y_z_bins = [log_y[z_bin_indices == i] for i in range(3)]
+        for j in range(3):
+            nbins = (40, 20)[dusty]
+            bins = np.quantile(log_x_z_bins[j], np.linspace(0, 1, nbins + 1))
+            bin_indices = np.digitize(log_x_z_bins[j], bins)
+            x_medians, y_medians = ([], [])
+            for i in range(1, len(bins)):
+                bin_mask = bin_indices == i
+                x_medians.append(np.median(log_x_z_bins[j][bin_mask]))
+                y_medians.append(np.median(log_y_z_bins[j][bin_mask]))
+            axes[ax_i].plot(x_medians, y_medians, linewidth=2, alpha=0.8, c=colours[j], label=bin_strs[j], zorder=5)
+
+        legend = axes[ax_i].legend(loc='lower left', fontsize=13)
+        frame = legend.get_frame()
+        frame.set_edgecolor('black')
+        frame.set_boxstyle('Square')
+        frame.set_alpha(0.8)
+
+    # axes setup
     axes[ax_i].set_xlim(min(x_medians), -13)
     axes[ax_i].set_ylim(y_limits)
     axes[ax_i].xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
@@ -72,6 +111,7 @@ for ax_i in range(len(axes)):
     axes[ax_i].minorticks_off()
     axes[ax_i].grid(False)
     #axes[ax_i].grid(True, alpha=0.6, linestyle='--')
+
 
 cbar = fig.colorbar(h1, label="$\mathrm{log}_{10}(N_\mathrm{gal})$",
                     ax=axes, fraction=0.046)

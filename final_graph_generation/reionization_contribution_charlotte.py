@@ -28,6 +28,9 @@ include_stellar_mass = False
 # Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
 dusty = True
 
+# Use a constant f_esc model for comparison
+constant_f_esc = True
+
 folder = "final_rf_model/"
 if dusty:
     file = folder + 'n_esc_rf_observational_charlotte_dusty_test_train.json'
@@ -140,7 +143,6 @@ with open(file, 'r') as json_data:
         index = np.argmin(np.abs(test_pred_medians - pred_log_n_esc[i]))
         pred_mae[i] = (test_pred_mae[index])
 
-
 all_log_n_esc = [thesan_log_n_esc, pred_log_n_esc]
 all_log_uv_mag = [thesan_log_uv_mag, obvs_log_uv_mag]
 all_log_star_mass = [thesan_log_star_mass, obvs_log_star_mass]
@@ -150,6 +152,23 @@ all_log_uv_mag_err = [np.zeros_like(thesan_log_uv_mag), (obvs_uv_mag_high_error 
 all_log_star_mass_err = [np.zeros_like(thesan_log_star_mass), (obvs_star_mass_high_error + obvs_star_mass_low_error) / 2]
 all_redshift_err = [np.zeros_like(thesan_redshift), (obvs_redshift_high_error + obvs_redshift_low_error) / 2]
 
+# Constant f_esc model
+if constant_f_esc:
+    xi_ion_const = 10**25.22
+    f_esc_const = 0.1 
+    lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
+    log_uv_mag_const = np.linspace(-20, -13, 100)
+    uv_lum_const = 10**(-0.4 * (log_uv_mag_const + 48.6)) * lum_to_tenpc
+    log_n_ion_esc_const = np.log10(xi_ion_const * f_esc_const * uv_lum_const)
+    all_redshift.append(np.full(100, 3.0))
+    all_log_star_mass.append(np.linspace(6, 11, 100))
+    all_log_uv_mag.append(log_uv_mag_const)
+    all_log_n_esc.append(log_n_ion_esc_const)
+    all_log_n_esc_err.append(np.zeros_like(log_n_ion_esc_const))
+    all_log_uv_mag_err.append(np.zeros_like(log_uv_mag_const))
+    all_log_star_mass_err.append(np.zeros_like(log_uv_mag_const))
+    all_redshift_err.append(np.zeros_like(log_uv_mag_const))
+    
 
 def linear_1var(p, X):
     a, b = p
@@ -175,7 +194,6 @@ def n_ion_esc_linear_2var(z, a, b, c):
 
 def draw(mean, err): 
     return rng.normal(mean, err, n_mc) if err > 0 else np.full(n_mc, mean)
-
 
 
 # Schechter parameters for the number density of galaxies as a function of UV magnitude from Bouwens et al. (2021)
@@ -315,7 +333,7 @@ for cat in range(len(all_log_n_esc)):
     log_uv_mag_err = all_log_uv_mag_err[cat]
     redshift_err = all_redshift_err[cat]
     log_redshfit = np.log10(1 + redshift)
-    sigma_mag = (sigma_mag, 1.0)[cat]  # Assume a different scatter for observations than what we find in Thesan-Zoom
+    sigma_mag = (sigma_mag, 1.0, sigma_mag)[cat]  # Assume a different scatter for observations than what we find in Thesan-Zoom
 
     subset_indices = range(len(log_n_esc))
     # subset_indices = np.where(log_uv_mag < -0)[0]
@@ -473,11 +491,11 @@ for cat in range(len(all_log_n_esc)):
                                         w=dpl_weights, k=3, s=dpl_smooth)
             dpl_spline_low = UnivariateSpline(dpl_uv_redshifts, log_dpl_uv_N_escs - log_dpl_uv_err_low,
                                         w=dpl_weights, k=3, s=dpl_smooth)
-            # with open("final_graph_generation/uv_N_ion_spline_dpl.pkl", "wb") as f:
+            # with open("final_graph_generation/spline/uv_N_ion_spline_dpl.pkl", "wb") as f:
             #     pickle.dump(dpl_spline, f)
-            # with open("final_graph_generation/uv_N_ion_spline_high_dpl.pkl", "wb") as f:
+            # with open("final_graph_generation/spline/uv_N_ion_spline_high_dpl.pkl", "wb") as f:
             #     pickle.dump(dpl_spline_high, f)
-            # with open("final_graph_generation/uv_N_ion_spline_low_dpl.pkl", "wb") as f:
+            # with open("final_graph_generation/spline/uv_N_ion_spline_low_dpl.pkl", "wb") as f:
             #     pickle.dump(dpl_spline_low, f)
 
             all_log_dpl_uv_N_escs.append(log_dpl_uv_N_escs)
@@ -888,14 +906,18 @@ if not split_contribution:
     ax.plot(sch_uv_redshifts, all_log_sch_uv_N_escs[0], linestyle='--', c='darkviolet', linewidth=2.5, alpha=0.8, zorder=2)
     ax.scatter(sch_uv_redshifts, all_log_sch_uv_N_escs[0], s=150, c='darkviolet', edgecolors='black', zorder=5,
             label=(r'$\textsc{thesan-zoom}$-based (This Work)', 'Schechter Luminosity Functions')[include_dpl])
-    with open("final_graph_generation/thesan_uv_N_ion_spline_sch.pkl", "wb") as f:
+    with open("final_graph_generation/splines/thesan_uv_N_ion_spline_sch.pkl", "wb") as f:
         pickle.dump(all_sch_spline[0], f)
-    with open("final_graph_generation/thesan_uv_N_ion_spline_high_sch.pkl", "wb") as f:
+    with open("final_graph_generation/splines/thesan_uv_N_ion_spline_high_sch.pkl", "wb") as f:
         pickle.dump(all_sch_spline_high[0], f)
-    with open("final_graph_generation/thesan_uv_N_ion_spline_low_sch.pkl", "wb") as f:
+    with open("final_graph_generation/splines/thesan_uv_N_ion_spline_low_sch.pkl", "wb") as f:
         pickle.dump(all_sch_spline_low[0], f)
     # ax.plot(z_space, all_sch_spline[0](z_space), alpha = 0.8, linestyle='-', c='black', linewidth=2,
     #         zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Spline Fit')
+    thesan_emissivity_data = np.column_stack((sch_uv_redshifts, all_log_sch_uv_N_escs[0], all_log_sch_uv_err_low[0], all_log_sch_uv_err_high[0]))
+    np.savetxt(f'final_graph_generation/emissivities/thesan_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.csv', thesan_emissivity_data)
+    with open(f"final_graph_generation/splines/thesan_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.pkl", "wb") as f:
+        pickle.dump(all_sch_spline[0], f)   
 
     if not include_stellar_mass and not include_dpl:
         # plot this work's observational derived Schechter UV magnitude N_esc integrations
@@ -904,15 +926,15 @@ if not split_contribution:
         ax.plot(sch_uv_redshifts, all_log_sch_uv_N_escs[1], linestyle='--', c='darkcyan', linewidth=2.5, alpha=0.8, zorder=2)
         ax.scatter(sch_uv_redshifts, all_log_sch_uv_N_escs[1], s=150, c='darkcyan', edgecolors='black', zorder=5,
                 label='JWST-based (This Work)')
-        with open("final_graph_generation/observational_uv_N_ion_spline_sch.pkl", "wb") as f:
+        with open("final_graph_generation/splines/observational_uv_N_ion_spline_sch.pkl", "wb") as f:
             pickle.dump(all_sch_spline[1], f)
-        with open("final_graph_generation/observational_uv_N_ion_spline_high_sch.pkl", "wb") as f:
+        with open("final_graph_generation/splines/observational_uv_N_ion_spline_high_sch.pkl", "wb") as f:
             pickle.dump(all_sch_spline_high[1], f)
-        with open("final_graph_generation/observational_uv_N_ion_spline_low_sch.pkl", "wb") as f:
+        with open("final_graph_generation/splines/observational_uv_N_ion_spline_low_sch.pkl", "wb") as f:
             pickle.dump(all_sch_spline_low[1], f)
         # ax.plot(z_space, all_sch_spline[1](z_space), alpha = 0.8, linestyle='-', c='black', linewidth=2,
         #         zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Spline Fit')
-        # with open(f"final_graph_generation/observational_uv_N_ion_spline_sch_{str(sigma_mag)}.pkl", "wb") as f:
+        # with open(f"final_graph_generation/splines/observational_uv_N_ion_spline_sch_{str(sigma_mag)}.pkl", "wb") as f:
         #     pickle.dump(all_sch_spline[1], f)
     
     if include_dpl:
@@ -944,6 +966,15 @@ if not split_contribution:
         # ax.plot(m_redshifts, all_log_m_N_escs[1], linestyle='--', c='darkorange', linewidth=2.5, alpha=0.8, zorder=4)
         # ax.scatter(m_redshifts, all_log_m_N_escs[1], s=150, c='darkorange',  edgecolors='black', zorder=5,
         #         label='$\dot{N}_\mathrm{ion}$, $M_*$ Schechter Functions')
+
+    if constant_f_esc:
+        ax.errorbar(sch_uv_redshifts, all_log_sch_uv_N_escs[2], yerr=(all_log_sch_uv_err_low[2], all_log_sch_uv_err_high[2]),
+            fmt='none', c='mediumvioletred', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
+        ax.plot(sch_uv_redshifts, all_log_sch_uv_N_escs[2], linestyle='--', c='mediumvioletred', linewidth=2.5, alpha=0.8, zorder=2)
+        ax.scatter(sch_uv_redshifts, all_log_sch_uv_N_escs[2], s=150, c='mediumvioletred', edgecolors='black', zorder=5,
+            label='$f_\mathrm{esc}$ = 10%')
+        with open(f"final_graph_generation/splines/f_esc_const_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.pkl", "wb") as f:
+            pickle.dump(all_sch_spline[2], f)   
 
     ax.set_xlabel("$z$")
     ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
