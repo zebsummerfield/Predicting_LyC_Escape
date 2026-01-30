@@ -14,7 +14,7 @@ obvs = False
 dusty = True
 
 # True to plot median lines for different redshift bins
-redshift_bins = True
+redshift_bins = False
 
 folder = "final_graph_generation/"
 file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
@@ -65,7 +65,8 @@ for ax_i in range(len(axes)):
         y_84th.append(np.percentile(log_y[bin_mask], 84))
 
     # plots the median of log_x against the median of log_y for each bin as well as the 1 sigma range
-    #axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
+    if not redshift_bins:
+        axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
     axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="P16 -- P84", zorder=4)
 
     # splits the galaxies into three redshift and plots median lines for each redshift bin

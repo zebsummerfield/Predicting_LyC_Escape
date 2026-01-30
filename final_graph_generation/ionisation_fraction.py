@@ -1,12 +1,10 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-from sympy import Line2D
 from functions import *
-import numpy as np
 from matplotlib.ticker import MaxNLocator
 import pickle
-from scipy.integrate import solve_ivp, cumtrapz
+from scipy.integrate import solve_ivp, cumulative_trapezoid as cumtrapz
 
 # Set to True to plot ionisation fraction Q, False to plot optical depth tau
 Q_plot = True

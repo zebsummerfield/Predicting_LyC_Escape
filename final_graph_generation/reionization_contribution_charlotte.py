@@ -29,7 +29,7 @@ include_stellar_mass = False
 dusty = True
 
 # Use a constant f_esc model for comparison
-constant_f_esc = True
+constant_f_esc = False
 
 folder = "final_rf_model/"
 if dusty:

@@ -129,7 +129,7 @@ if residuals:
     fit = ax.axhline(0, c='teal', alpha=0.8, zorder=4)
 
     # seperates the galaxies into bins of x with each containing equal numbers of galaxies
-    nbins = 10
+    nbins = 20
     bins = np.quantile(x, np.linspace(0, 1, nbins + 1))
     bin_indices = np.digitize(x, bins)
     x_medians, y_medians, = ([], [])
