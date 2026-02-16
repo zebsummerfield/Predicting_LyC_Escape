@@ -60,7 +60,6 @@ with h5py.File(file, 'r') as hdf:
     uv_size = np.array(hdf['uv_size_obs_2d_full'])
     ha_size = np.array(hdf['ha_size_obs_2d_full'])
     sfr10_density = sfr10 / (np.pi * sfr_size**2)
-    print(hdf.keys())
 
     if dusty:
         uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_fdust_40_full'])

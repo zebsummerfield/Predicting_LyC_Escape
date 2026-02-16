@@ -828,7 +828,7 @@ if not split_contribution:
     # ax.scatter(becker_2013[:,0], becker_2013[:,1], s=50, marker='o', c='black', edgecolors='black',
     #            zorder=4, label='Becker et al. (2013)')
     ax.fill_between(becker_2013[:,0], becker_2013[:,2], becker_2013[:,3],
-                    color=constraint_colours["becker"], alpha=0.5, zorder=2, label='Becker+2013')
+                    color=constraint_colours["becker"], alpha=0.5, zorder=2, label='Becker \& Bolton+2013')
 
     # plot observational constraints on N_ion from Gaikwad (2023)
     constraints_folder = 'other_paper_graphs/'
@@ -890,15 +890,30 @@ if not split_contribution:
         N_ion_f_esc_10 = [51.23478634, 50.85474357, 50.60201125, 50.57420019, 50.34034352, 49.99205213]
         N_ion_f_esc_chisholm = [50.76232333, 50.52949668, 50.52709877, 50.61663425, 50.36362092, 49.44427493]
         ax.errorbar(charlotte_z, N_ion_f_esc_10, yerr=0.3,
-                    fmt='none', c='crimson', elinewidth=2, alpha=0.8, capsize=0, zorder=2)
-        ax.plot(charlotte_z, N_ion_f_esc_10, linestyle=':', c='crimson', linewidth=2.5, alpha=0.8, zorder=2)
-        ax.scatter(charlotte_z, N_ion_f_esc_10, s=150, marker='^', c='crimson', edgecolors='black', zorder=3,
+                    fmt='none', c='darkorange', elinewidth=2, alpha=0.9, capsize=0, zorder=2)
+        ax.plot(charlotte_z, N_ion_f_esc_10, linestyle=':', c='darkorange', linewidth=2.5, alpha=0.8, zorder=2)
+        ax.scatter(charlotte_z, N_ion_f_esc_10, s=150, marker='^', c='darkorange', edgecolors='black', zorder=3,
                 label='Simmonds+2024, $f_\mathrm{esc}$ = 10\%')
         ax.errorbar(charlotte_z, N_ion_f_esc_chisholm, yerr=0.3,
-                    fmt='none', c='yellowgreen', elinewidth=2, alpha=0.8, capsize=0, zorder=2)
-        ax.plot(charlotte_z, N_ion_f_esc_chisholm, linestyle=':', c='yellowgreen', linewidth=2.5, alpha=0.8, zorder=2)
+                    fmt='none', c='yellowgreen', elinewidth=2, alpha=0.9, capsize=0, zorder=2)
+        ax.plot(charlotte_z, N_ion_f_esc_chisholm, linestyle=':', c='yellowgreen', linewidth=2.5, alpha=0.9, zorder=2)
         ax.scatter(charlotte_z, N_ion_f_esc_chisholm, s=150, marker='v', c='yellowgreen', edgecolors='black', zorder=3,
                 label='Simmonds+2024, $f_\mathrm{esc}$ = Chisholm+2022')
+        
+        # plot Garaldi+22's Thesan-1 and Thesan-2 N_ion integrations
+        constraints_folder = 'other_paper_graphs/'
+        thesan_files = ['thesan1_Nion_values.csv',
+                        'thesan2_Nion_values.csv']
+        with open(constraints_folder + thesan_files[0], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            thesan1 = np.transpose(np.array([row for row in reader])).astype('float64')
+            thesan1[1] = np.log10(thesan1[1]) + 51
+        ax.plot(thesan1[0], thesan1[1], linestyle='-', c='red', linewidth=3.5, alpha=0.65, zorder=3, label=r'Garaldi+22, \textsc{thesan-1}')
+        with open(constraints_folder + thesan_files[1], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            thesan2 = np.transpose(np.array([row for row in reader])).astype('float64')
+            thesan2[1] = np.log10(thesan2[1]) + 51
+        ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=3, alpha=0.65, zorder=3, label=r'Garaldi+22, \textsc{thesan-2}')
     
     # plot this work's Thesan-Zoom derived Schechter UV magnitude N_esc integrations
     ax.errorbar(sch_uv_redshifts, all_log_sch_uv_N_escs[0], yerr=(all_log_sch_uv_err_low[0], all_log_sch_uv_err_high[0]),
