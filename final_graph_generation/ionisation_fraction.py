@@ -13,13 +13,13 @@ Q_plot = True
 sigma_compare = False
 
 # Set to True to compare Q evolutions for different N_ion integration M_uv_max values
-muvmax_compare = True
+muvmax_compare = False
 
 # Set to True to compare Q evolutions for different N_ion integration M_uv_min values
 muvmin_compare = False
 
 # Set to True to include f_esc constant splines when comparing muvmax
-include_f_esc_const = True
+include_f_esc_const = False
 
 Y = 0.24668
 X = 1 - Y
@@ -146,7 +146,7 @@ print(f"  JWST: Q = {jwst_Q_at_8:.4f}")
 
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 24})
-fig, ax = plt.subplots(figsize=[(8, 6), [(8, 8), (12, 8)][include_f_esc_const]][Q_plot])
+fig, ax = plt.subplots(figsize=[(8, 6), [(8, 8), (8, 8)][include_f_esc_const]][Q_plot])
 cmap1 = plt.get_cmap('inferno')
 cmap2 = plt.get_cmap('viridis')
 colours2 = cmap2(np.linspace(0.2, 0.8, len(sols)))[::-1]
@@ -277,7 +277,7 @@ if Q_plot == True:
         ax.scatter(kageura_z, kageura_Q, marker='o', color=constraint_colours["Kageura_2025"], s=75, edgecolors='black', label='Kageura+2025', zorder=5)
 
     ax.set_ylim(0, 1)
-    ax.set_xlim(4, 16)
+    ax.set_xlim(4, (16, 18)[include_f_esc_const])
     ax.xaxis.set_major_locator(MaxNLocator(nbins=10, integer=True))
     ax.grid(False)
     ax.set_xlabel('$z$')
@@ -287,23 +287,24 @@ if Q_plot == True:
         legend = plt.legend(fontsize=(20, 24)[sigma_compare], loc='upper right', bbox_to_anchor=(1.00, 1.00), frameon=False)
     else:
         header_thesan = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
-        header_text_thesan = ax.text(1.195, 0.94, r'$\textsc{thesan-zoom}$-based:', fontsize=16,
+        header_text_thesan = ax.text(0.81, 0.95, r'$\textsc{thesan-zoom}$-based:', fontsize=16,
                                      transform=ax.transAxes, ha='center', va='center', zorder=5)
         header_f_esc_const_1 = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
         header_f_esc_const_2 = ax.plot([], [], linestyle='none', linewidth=0, marker=None, label=' ')[0]
-        header_text_f_esc_const = ax.text(1.195, 0.47, r'$f_\mathrm{esc} = 10$\%:', fontsize=16,
+        header_text_f_esc_const = ax.text(0.81, 0.47, r'$f_\mathrm{esc} = 10$\%:', fontsize=16,
                                           transform=ax.transAxes, ha='center', va='center', zorder=5)
         handles = [header_thesan, *thesan_lines, header_f_esc_const_1, header_f_esc_const_2, *f_esc_const_lines]
         labels = [h.get_label() for h in handles]
         legend = ax.legend(handles, labels, alignment='center', handlelength=1.2,handletextpad=0.6, borderpad=1.4, labelspacing=0.4,
-                           fontsize=16, loc='center left', bbox_to_anchor=(1.05, 0.5), borderaxespad=0)
+                           fontsize=16, loc='center', bbox_to_anchor=(0.81, 0.51), borderaxespad=0, frameon=False)
+        # frame = legend.get_frame()
+        # frame.set_edgecolor('black')
+        # frame.set_boxstyle('Square')
+        # frame.set_alpha(0.8)
+        # plt.subplots_adjust(right=0.7)
         legend.set_zorder(4)
         for text in legend.get_texts():
                 text.set_ha('center')
-        frame = legend.get_frame()
-        frame.set_edgecolor('black')
-        frame.set_boxstyle('Square')
-        frame.set_alpha(0.8)
         plt.subplots_adjust(right=0.7)
 
 elif sigma_compare == False and muvmax_compare == False and muvmin_compare == False:
@@ -328,9 +329,9 @@ elif sigma_compare == False and muvmax_compare == False and muvmin_compare == Fa
     # ax.fill_between(z, heinrich_tau - 2*heinrich_tau_err_low, heinrich_tau + 2*heinrich_tau_err_high,
     #                 color='#2A9D8F', edgecolor='#146A5A', alpha=0.2, label='Heinrich+2021', zorder=2)
 
-    ax.plot(z, thesan_tau_z, label=r'$\textsc{thesan-zoom}$-based', linewidth=3, color='darkviolet', zorder=3)
+    ax.plot(z, thesan_tau_z, label=r'$\textsc{thesan-zoom}$-based', linewidth=2.5, color='darkviolet', zorder=3)
     ax.fill_between(z, thesan_tau_z_low, thesan_tau_z_high, color='darkviolet', alpha=0.15, zorder=3)
-    ax.plot(z, obvs_tau_z, label=r'JWST-based', linewidth=3, color='darkcyan', linestyle='--', zorder=3)
+    ax.plot(z, obvs_tau_z, label=r'JWST-based', linewidth=2.5, color='darkcyan', linestyle='--', zorder=3)
 
     ax.set_ylim(0, 0.08)
     ax.set_xlim(4, 16)
@@ -343,5 +344,5 @@ elif sigma_compare == False and muvmax_compare == False and muvmin_compare == Fa
 plt.tight_layout()
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

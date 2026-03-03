@@ -6,7 +6,7 @@ from scipy.optimize import curve_fit
 from matplotlib.ticker import MaxNLocator
 
 # True for plotting residuals against variables, False for plotting predicted target against variables
-residuals = True
+residuals = False
 
 # True for 2D histogram, False for scatter plot
 histogram = True
@@ -19,7 +19,8 @@ if dusty:
     file = 'cat_dusttestszeb.hdf5'
 else:
     file = 'cat.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, add_vars=['redshift_full'])
+#file = 'cat_dusttestszeb_test.hdf5'
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, ssfr50_cut=False, add_vars=['redshift_full'])
 print(keys)
 
 def linear_1var(p, X):
@@ -44,12 +45,14 @@ mpl.rcParams['text.latex.preamble'] = r'\usepackage{amsmath}'
 fig, axes = plt.subplots(2, 2, figsize=(16, 12))
 
 # sorts the data by redshift for plotting
+uv_mag = log_vars[3]
+log_star_mass = log_vars[2]
 redshift = 10**log_vars[-1]
 sorted_indices = np.argsort(redshift)
 
 for i_1 in range(len(axes)):
 
-    x = [log_vars[3], log_vars[2]][i_1]
+    x = [uv_mag, log_star_mass][i_1]
     x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][i_1]
     x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][i_1]
     # x_range = (([-27, -11], [5, 12])[i_1], ([-23, -13], [6, 11])[i_1])[histogram]
@@ -61,18 +64,24 @@ for i_1 in range(len(axes)):
         y = [log_f_esc, log_n_esc][i_2]
         y_range = ([-5, -0], [44.5, 54.5])[i_2]
         f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                      '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
+                      '$\mathrm{Log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
         f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                              '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
+                              '$\mathrm{Log}_{10}(\dot{N}_\mathrm{ion,esc})$'][i_2]
         print((x_str_no_unit, f_or_n_str_no_unit))
+
+        # Fit using only galaxies from Thesan with M_UV <= -13 or log_10(M_*) >= 6
+        selection = np.where(
+            [(uv_mag <= -13), (log_star_mass >= 6.0)][i_1]
+            )[0]
+        print('thesan rows used in fitting:', len(selection))
         
         # Fit using Weighted Least Squares Regression
-        popt, pcov = curve_fit(curve_fit_func_1var, x, y)
+        popt, pcov = curve_fit(curve_fit_func_1var, x[selection], y[selection])
         a, b = popt
         a_err, b_err = np.sqrt(np.diag(pcov))
 
         # Print fit parameters for Weighted Least Squares Regression including redshift dependence
-        popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, np.log10(1+redshift)), y)
+        popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x[selection], np.log10(1+redshift[selection])), y[selection])
         a_2, b_2, c_2 = popt_2
         a_2_err, b_2_err, c_2_err = np.sqrt(np.diag(pcov_2))
         a_2_str, a_2_err_str = round_to_error(a_2, a_2_err)
@@ -86,16 +95,16 @@ for i_1 in range(len(axes)):
         ))
 
         y_residuals = y - linear_2var((a_2, b_2, c_2), (x, np.log10(1+redshift)))
-        std_y = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
+        std_y = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(y_residuals[selection]**2))
         print(f"Standard deviation of residuals: {std_y}")
         # p16, p84 = np.percentile(y_residuals, [16, 84])
         # sigma_16_84 = (p84 - p16) / 2
         # print(f"16th-84th percentile range: {sigma_16_84}")
 
-        popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y, np.log10(1+redshift)), x)
+        popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y[selection], np.log10(1+redshift[selection])), x[selection])
         a_3, b_3, c_3 = popt_3
         x_residuals = x - linear_2var((a_3, b_3, c_3), (y, np.log10(1+redshift)))
-        std_x = np.sqrt((1/ (len(y)- 2)) * np.sum(x_residuals**2))
+        std_x = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(x_residuals[selection]**2))
         print(f"Fit reveresd standard deviation of residuals: {std_x}")
         # p16, p84 = np.percentile(x_residuals, [16, 84])
         # sigma_16_84 = (p84 - p16) / 2
@@ -104,10 +113,10 @@ for i_1 in range(len(axes)):
 
         if i_2 == 1:
             if not residuals:
-                ax.text((0.975, 0.025)[i_1], 0.975, r'$\sigma_{\dot{n}} = $' + str(round(std_y, 3)),
+                ax.text((0.95, 0.05)[i_1], 0.95, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
                     ha=('right', 'left')[i_1], va='top', transform=ax.transAxes, fontsize=19, color=('black', 'white')[histogram])
             else:
-                ax.text((0.025, 0.975)[i_1], 0.025, r'$\sigma_{\dot{n}} = $' + str(round(std_y, 3)),
+                ax.text((0.95, 0.905)[i_1], 0.05, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
                     ha=('left', 'right')[i_1], va='bottom', transform=ax.transAxes, fontsize=19, color=('black', 'white')[histogram])
 
         if residuals:
@@ -241,6 +250,7 @@ for i_1 in range(len(axes)):
             if i_1 == 0:
                 ax.set_ylabel(f_or_n_str, labelpad=10)
             ax.set_ylim(y_range)
+            ax.tick_params(color='white')
         if i_2 == 1:
             ax.set_xlabel(x_str)
         ax.set_xlim(x_range)
@@ -261,5 +271,5 @@ else:
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "png")[histogram], bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "pdf")[histogram], bbox_inches='tight', dpi=500)
 plt.show()

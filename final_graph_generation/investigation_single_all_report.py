@@ -15,9 +15,11 @@ dusty = True
 
 folder = "final_graph_generation/"
 file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+file = 'cat_dusttestszeb_mcrtesc.hdf5'
+#file = 'cat_dusttestszeb_smalltest.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False)
 f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
-                '$\mathrm{log}_{10}(\dot{n}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]
+                '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]
 y_limits = ((-5.5, 0), (45, 54))[f_or_n]
 
 f_strs = ['$\Delta\mathrm{MS}_{10} \; [\mathrm{dex}]$',
@@ -63,7 +65,6 @@ for index in range((15, 10)[f_or_n]):
     log_x = log_x[valid]
     log_y = [log_f_esc, log_n_esc][f_or_n][valid]
     ax = axes[index]
-
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
     nbins = (100, 75)[dusty]
     hist, xedges, yedges = np.histogram2d(log_x, log_y, bins=nbins, range=((min(log_x), max(log_x)), y_limits))
@@ -90,7 +91,6 @@ for index in range((15, 10)[f_or_n]):
         y_medians.append(np.median(log_y[bin_mask]))
         y_16th.append(np.percentile(log_y[bin_mask], 16))
         y_84th.append(np.percentile(log_y[bin_mask], 84))
-
     # plots the median of log_x against the median of log_y for each bin
     # print(index)
     # if len(x_medians) == 0:
@@ -111,5 +111,5 @@ fig.tight_layout()
 cbar = fig.colorbar(h1, ax=axes, orientation='vertical', aspect=(30, 20)[f_or_n], pad=0.03)
 cbar.set_label("$\mathrm{log}_{10}(N_\mathrm{gal})$")
 mpl.rcParams['figure.dpi'] = 500
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

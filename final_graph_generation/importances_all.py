@@ -16,9 +16,9 @@ file3 = folder + f'f_esc_rf_observational_charlotte{dusty_str}_test_train.json'
 file4 = folder + f'n_esc_rf_observational_charlotte{dusty_str}_test_train.json' 
 files = [file1, file2, file3, file4]
 model_strs = ['Model A - Best $f_\mathrm{esc}$ Predictor',
-              'Model B - Best $n_\mathrm{ion,esc}$ Predictor',
+              'Model B - Best $\dot{N}_\mathrm{ion,esc}$ Predictor',
               'Model C - Observational $f_\mathrm{esc}$ Predictor',
-              'Model D - Observational $n_\mathrm{ion,esc}$ Predictor']
+              'Model D - Observational $\dot{N}_\mathrm{ion,esc}$ Predictor']
 
 f_key_strs = np.array(['$\Delta\mathrm{MS}_{10}$', '$\mathrm{SFR}_{10}/\mathrm{SFR}_{100}$', '$M_*$',
                        '$M_\mathrm{gas}/M_*$', '$M_*/M_\mathrm{vir}$', '$Z$',
@@ -79,5 +79,5 @@ for m_i in range(len(model_strs)):
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", dpi=500)
 plt.show()

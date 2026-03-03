@@ -17,8 +17,9 @@ dusty = True
 redshift_bins = False
 
 folder = "final_graph_generation/"
-file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False, add_vars=['redshift_full'])
+file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+#file = 'cat_dusttestszeb_largetest.hdf5'
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=True, add_vars=['redshift_full'])
 
 print(keys)
 x_index = 6  # index of M_UV in log_vars
@@ -37,7 +38,7 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 for ax_i in range(len(axes)):
     log_y = [log_f_esc, log_n_esc][ax_i]
     f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
-                  '$\mathrm{log}_{10}(\dot{n}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][ax_i]
+                  '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][ax_i]
     y_limits = ((-5, 0), (46, 54))[ax_i]
 
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
@@ -68,6 +69,13 @@ for ax_i in range(len(axes)):
     if not redshift_bins:
         axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
     axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="P16 -- P84", zorder=4)
+
+    # calculates the correlation coefficient and mean 1-sigma range
+    selected_galaxies = np.where(log_x < -13)[0]
+    corrcoef = np.corrcoef(log_x[selected_galaxies], log_y[selected_galaxies])[0, 1]
+    print(f"Correlation coefficient between M_UV and {f_or_n_str}: {corrcoef:.3f}")
+    mean_sigma = np.mean(np.array(y_84th) - np.array(y_16th)) / 2
+    print(f"Mean 1-sigma range for {f_or_n_str}: {mean_sigma:.3f} dex")
 
     # splits the galaxies into three redshift and plots median lines for each redshift bin
     if redshift_bins:
@@ -128,5 +136,5 @@ if hasattr(cbar, 'solids') and cbar.solids is not None:
         pass
 
 mpl.rcParams['figure.dpi'] = 500
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

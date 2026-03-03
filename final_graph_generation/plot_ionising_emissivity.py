@@ -25,15 +25,18 @@ include_charlotte = True
 # True to include the original Thesan N_ion calculations in plot
 include_thesan = True
 
-# True to plot M_UV,max varying, False to plot M_UV,min varying
-vary_max = True
+# True to plot M_UV,max varying
+vary_max = False
+
+# False to plot M_UV,min varying
+vary_min = False
 
 folder = "final_graph_generation/emissivities/"
 if vary_max:
     mag_range = (-10, -17)
     abs_mag_list = list(range(abs(mag_range[0]), abs(mag_range[1]) + 1))
     files_to_load = [f"thesan_N_ion_magmin_33_magmax_{i}.csv" for i in abs_mag_list]
-else:
+if vary_min:
     mag_range = (-35, -25)
     abs_mag_list = list(range(abs(mag_range[1]), abs(mag_range[0]) + 1))[::-1]
     files_to_load = [f"thesan_N_ion_magmin_{i}_magmax_13.csv" for i in abs_mag_list]
@@ -210,18 +213,44 @@ if include_thesan:
         thesan2[1] = np.log10(thesan2[1]) + 51
     ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=2.5, alpha=0.8, zorder=3, label='Garaldi+22, Thesan-2')
 
-for index, mag in enumerate(abs_mag_list):
-    data = np.loadtxt(folder + files_to_load[index])
-    redshift = data[:,0]
-    log_N_ion = data[:,1]
-    log_N_ion_err_low = data[:,2]
-    log_N_ion_err_high = data[:,3]
-    label = [r'$\textsc{thesan-zoom}$-based $M_\mathrm{UV, min} = $' + f'-{mag}',
-             r'$\textsc{thesan-zoom}$-based $M_\mathrm{UV, max} = $' + f'-{mag}'][vary_max]
-    # ax.errorbar(redshift, log_N_ion, yerr=(log_N_ion_err_low, log_N_ion_err_high),
-    #     fmt='none', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
-    ax.plot(redshift, log_N_ion, linestyle='--', linewidth=2.5, alpha=0.8, zorder=2)
-    ax.scatter(redshift, log_N_ion, s=150, edgecolors='black', zorder=5, label=label)
+if vary_max or vary_min:
+    for index, mag in enumerate(abs_mag_list):
+        data = np.loadtxt(folder + files_to_load[index])
+        redshift = data[:,0]
+        log_N_ion = data[:,1]
+        log_N_ion_err_low = data[:,2]
+        log_N_ion_err_high = data[:,3]
+        label = [r'$\textsc{thesan-zoom}$-based $M_\mathrm{UV, min} = $' + f'-{mag}',
+                r'$\textsc{thesan-zoom}$-based $M_\mathrm{UV, max} = $' + f'-{mag}'][vary_max]
+        # ax.errorbar(redshift, log_N_ion, yerr=(log_N_ion_err_low, log_N_ion_err_high),
+        #     fmt='none', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
+        ax.plot(redshift, log_N_ion, linestyle='--', linewidth=2.5, alpha=0.8, zorder=2)
+        ax.scatter(redshift, log_N_ion, s=150, edgecolors='black', zorder=5, label=label)
+
+else:
+    # plot this work's Thesan-Zoom derived Schechter UV magnitude N_esc integrations
+    thesan_data = np.loadtxt(folder + "thesan_N_ion_magmin_33_magmax_13.csv")
+    thesan_redshift = thesan_data[:,0]
+    thesan_log_N_ion = thesan_data[:,1]
+    thesan_log_N_ion_err_low = thesan_data[:,2]
+    thesan_log_N_ion_err_high = thesan_data[:,3]
+    ax.errorbar(thesan_redshift, thesan_log_N_ion, yerr=(thesan_log_N_ion_err_low, thesan_log_N_ion_err_high),
+                fmt='none', c='darkviolet', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
+    ax.plot(thesan_redshift, thesan_log_N_ion, linestyle='--', c='darkviolet', linewidth=2.5, alpha=0.8, zorder=2)
+    ax.scatter(thesan_redshift, thesan_log_N_ion, s=150, c='darkviolet', edgecolors='black', zorder=5,
+            label=(r'$\textsc{thesan-zoom}$-based (This Work)'))
+
+    # plot this work's observational derived Schechter UV magnitude N_esc integrations
+    observational_data = np.loadtxt(folder + "observational_N_ion.csv")
+    observational_redshift = observational_data[:,0]
+    observational_log_N_ion = observational_data[:,1]
+    observational_log_N_ion_err_low = observational_data[:,2]
+    observational_log_N_ion_err_high = observational_data[:,3]
+    ax.errorbar(observational_redshift, observational_log_N_ion, yerr=(observational_log_N_ion_err_low, observational_log_N_ion_err_high),
+                fmt='none', c='darkcyan', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
+    ax.plot(observational_redshift, observational_log_N_ion, linestyle='--', c='darkcyan', linewidth=2.5, alpha=0.8, zorder=2)
+    ax.scatter(observational_redshift, observational_log_N_ion, s=150, c='darkcyan', edgecolors='black', zorder=5,
+            label='JWST-based (This Work)')
 
 ax.set_xlabel("$z$")
 ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")

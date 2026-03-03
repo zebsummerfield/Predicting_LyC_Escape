@@ -22,7 +22,9 @@ if dusty:
     file = 'cat_dusttestszeb.hdf5'
 else:
     file = 'cat.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, add_vars=['redshift_full'])
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, ssfr50_cut=False, add_vars=['redshift_full'])
+log_uv_mag = log_vars[3]
+log_star_mass = log_vars[2]
 print(keys)
 
 def linear_1var(p, X):
@@ -50,7 +52,13 @@ fig, ax = plt.subplots(1, 1, figsize=(10, 8))
 redshift = 10**log_vars[-1]
 sorted_indices = np.argsort(redshift)
 
-x = [log_vars[3], log_vars[2]][uv_or_mass]
+# Fit using only galaxies from Thesan with M_UV <= -13 or log_10(M_*) >= 6
+selection = np.where(
+    [(log_uv_mag <= -13), (log_star_mass >= 6.5)][uv_or_mass]
+    )[0]
+print('thesan rows used in fitting:', len(selection))
+
+x = [log_uv_mag, log_star_mass][uv_or_mass]
 x_str = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'][uv_or_mass]
 x_str_no_unit = ['$M_\mathrm{UV}$', '$\mathrm{Log}_{10}(M_{*})$'][uv_or_mass]
 x_range = ([-23, -13], [6, 11])[uv_or_mass]
@@ -58,18 +66,18 @@ x_range = ([-23, -13], [6, 11])[uv_or_mass]
 y = [log_f_esc, log_n_esc][f_or_n]
 y_range = ([-5, -0], [44.5, 54.5])[f_or_n]
 f_or_n_str = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
+                '$\mathrm{Log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
 f_or_n_str_no_unit = ['$\mathrm{Log}_{10}(f_\mathrm{esc})$',
-                        '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc})$'][f_or_n]
+                        '$\mathrm{Log}_{10}(\dot{N}_\mathrm{ion,esc})$'][f_or_n]
 print((x_str_no_unit, f_or_n_str_no_unit))
 
 # Fit using Weighted Least Squares Regression
-popt, pcov = curve_fit(curve_fit_func_1var, x, y)
+popt, pcov = curve_fit(curve_fit_func_1var, x[selection], y[selection])
 a, b = popt
 a_err, b_err = np.sqrt(np.diag(pcov))
 
 # Print fit parameters for Weighted Least Squares Regression including redshift dependence
-popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, np.log10(1+redshift)), y)
+popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x[selection], np.log10(1+redshift[selection])), y[selection])
 a_2, b_2, c_2 = popt_2
 a_2_err, b_2_err, c_2_err = np.sqrt(np.diag(pcov_2))
 a_2_str, a_2_err_str = round_to_error(a_2, a_2_err)
@@ -83,26 +91,26 @@ print((
 ))
 
 y_residuals = y - linear_2var((a_2, b_2, c_2), (x, np.log10(1+redshift)))
-std_y = np.sqrt((1/ (len(x)- 2)) * np.sum(y_residuals**2))
+std_y = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(y_residuals[selection]**2))
 print(f"Standard deviation of residuals: {std_y}")
 # p16, p84 = np.percentile(y_residuals, [16, 84])
 # sigma_16_84 = (p84 - p16) / 2
 # print(f"16th-84th percentile range: {sigma_16_84}")
 
-popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y, np.log10(1+redshift)), x)
+popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y[selection], np.log10(1+redshift[selection])), x[selection])
 a_3, b_3, c_3 = popt_3
 x_residuals = x - linear_2var((a_3, b_3, c_3), (y, np.log10(1+redshift)))
-std_x = np.sqrt((1/ (len(y)- 2)) * np.sum(x_residuals**2))
+std_x = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(x_residuals[selection]**2))
 print(f"Fit reveresd standard deviation of residuals: {std_x}")
 # p16, p84 = np.percentile(x_residuals, [16, 84])
 # sigma_16_84 = (p84 - p16) / 2
 # print(f"16th-84th percentile range: {sigma_16_84}")
 
 if not residuals:
-    ax.text((0.975, 0.025)[uv_or_mass], 0.975, r'$\sigma_{\dot{n}} = $' + str(round(std_y, 3)),
+    ax.text((0.975, 0.025)[uv_or_mass], 0.975, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
         ha=('right', 'left')[uv_or_mass], va='top', transform=ax.transAxes, fontsize=24, color=('black', 'white')[histogram])
 else:
-    ax.text((0.025, 0.975)[uv_or_mass], 0.025, r'$\sigma_{\dot{n}} = $' + str(round(std_y, 3)),
+    ax.text((0.025, 0.975)[uv_or_mass], 0.025, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
         ha=('left', 'right')[uv_or_mass], va='bottom', transform=ax.transAxes, fontsize=24, color=('black', 'white')[histogram])
 
 if residuals:
@@ -253,5 +261,5 @@ else:
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "png")[histogram], bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "pdf")[histogram], bbox_inches='tight', dpi=500)
 plt.show()

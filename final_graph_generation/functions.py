@@ -102,7 +102,7 @@ def configure_plots():
     # figure settings
     rcParams['figure.figsize'] = 5, 4
 
-def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, eps=True, add_vars=[]):
+def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, eps=True, ssfr50_cut=True, add_vars=[]):
     """
     Loads the data from the training catalogue and prepares it for model training
 
@@ -146,8 +146,8 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         sfr_size = np.array(hdf['sfr_size_full'])
         # ha_size = np.array(hdf['ha_size_obs_full'])
         # uv_size = np.array(hdf['uv_size_obs_full'])
-        uv_size = np.array(hdf['uv_size_obs_2d_full'])
-        ha_size = np.array(hdf['ha_size_obs_2d_full'])
+        uv_size = np.array(hdf['uv_size_obs_full'])
+        ha_size = np.array(hdf['ha_size_obs_full'])
         sfr10_density = sfr10 / (np.pi * sfr_size**2)
 
         if dusty:
@@ -156,6 +156,24 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         else:
             uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_full'])
             uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_full'])
+
+        # # RHD variables
+        # ha_lum = np.array(hdf['ha_lum_obs_full'])
+        # ha_size = np.array(hdf['ha_size_obs_full'])
+        # uv_int_lum = np.array(hdf['uv_lum_int_fdust_40_full'])
+        # uv_obs_lum = np.array(hdf['uv_lum_obs_fdust_40_full'])
+        # uv_size = np.array(hdf['uv_size_obs_full'])
+        # f_esc = np.array(hdf['f_esc_fdust_40_vir_full'])
+        # n_esc = np.array(hdf['Ndot_LyC_fdust_40_vir_full'])
+
+        # # MCRT variables 
+        # ha_lum = np.array(hdf['ha_mcrt_lum_obs_full'])
+        # ha_size = np.array(hdf['ha_mcrt_size_obs_full'])
+        # uv_int_lum = np.array(hdf['uv_lum_int_fdust_40_full'])
+        # uv_obs_lum = np.array(hdf['uv_lum_obs_fdust_40_full'])
+        # uv_size = np.array(hdf['uv_size_obs_full'])
+        # f_esc = np.array(hdf['f_esc_mcrt_fdust_40_vir_full'])
+        # n_esc = np.array(hdf['Ndot_LyC_mcrt_fdust_40_vir_full'])
 
         # fixing gas mass units
         gas_mass = gas_mass / (0.76 / 1.6735575e-24)
@@ -254,14 +272,17 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         print(keys)
         
         # removes any rows that have zero ,unity or infinity for the vars and f_esc
-        # ssfr50 is included to remove galaxies that have had no recent star formation
+        # ssfr50 can be included to remove galaxies that have had no recent star formation
         f_esc[np.isnan(f_esc)] = 0
         n_esc[np.isnan(n_esc)] = 0
         # bad_indices = list(np.where(~np.array(hdf['central_full']))[0])
         # bad_indices = list(np.where(redshift < 5)[0])
         bad_indices = []
-        for i in range(len(np.concatenate((log_vars, [f_esc, n_esc], [ssfr50])))):
-            b_i = [index for index, val in enumerate(list(np.concatenate((log_vars, [f_esc, n_esc], [ssfr50]))[i]))
+        #snapnum = np.array(hdf['snapnum_full'])
+        #bad_indices = list(np.where(snapnum != 188)[0])
+        vars_to_check = [np.concatenate((log_vars, [f_esc, n_esc])), np.concatenate((log_vars, [f_esc, n_esc, ssfr50]))][ssfr50_cut]
+        for i in range(len(vars_to_check)):
+            b_i = [index for index, val in enumerate(list(vars_to_check[i]))
                             if (val == 0 or val == 1 or val == np.inf or val== -np.inf)]
             print(f"feature {i+1} bad rows: {len(b_i)}")
             bad_indices += b_i

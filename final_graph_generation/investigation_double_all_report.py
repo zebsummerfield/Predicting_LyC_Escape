@@ -24,7 +24,7 @@ ratio_vars = ['sfr_full_10', 'sfr_full_100',
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False,
                                                     add_vars=ratio_vars)
 f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
-              '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
+              '$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][f_or_n]
 log_target = [log_f_esc, log_n_esc][f_or_n]
 gas_mass = 10**log_vars[-8].astype('float64')
 gas_mass = gas_mass / (0.76 / 1.6735575e-24)
@@ -137,5 +137,5 @@ fig.tight_layout(w_pad=3, h_pad=1)
 cbar = fig.colorbar(color_hist, ax=axes, orientation='vertical', aspect=25, pad=0.03)
 cbar.set_label(f_or_n_str)
 mpl.rcParams['figure.dpi'] = 500
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

@@ -37,7 +37,7 @@ for ax_i in range(len(axes)):
     log_target = [log_f_esc, log_n_esc][ax_i]
     target = 10**log_target.astype('float64')
     f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
-                  '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
+                  '$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
 
     if scatter:
         # plots a scatter of x against y where the colour and size of the points is determined by the target
@@ -51,7 +51,7 @@ for ax_i in range(len(axes)):
                                         c=target[sorted_indices], cmap='inferno', marker='.',
                                         vmax=vmax, vmin=vmin)
         scatter_label =  ['$f_{\mathrm{esc}}$',
-                          '$\mathrm{Log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
+                          '$\mathrm{Log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][ax_i]
         plt.colorbar(color_scatter, label=scatter_label, ax=ax, fraction=0.046, pad=0.04)
         ax.set_xlabel(x_str)
         ax.set_ylabel(y_str)
@@ -135,5 +135,5 @@ for ax_i in range(len(axes)):
 
 mpl.rcParams['figure.dpi'] = 500
 plt.tight_layout(w_pad=2)
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

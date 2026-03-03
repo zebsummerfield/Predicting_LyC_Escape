@@ -12,7 +12,7 @@ from astropy.io import fits
 from scipy import odr
 import csv
 from matplotlib.ticker import MaxNLocator
-from scipy.interpolate import UnivariateSpline, interp1d
+from scipy.interpolate import UnivariateSpline, interp1d, BSpline, LSQUnivariateSpline
 from scipy.signal import fftconvolve
 import pickle
 
@@ -41,11 +41,27 @@ else:
 # Thesan data
 thesan_file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
 # thesan_file = 'cat_dusttestszeb_mcrtesc.hdf5'
-thesan_keys, thesan_log_vars, thesan_log_f_esc, thesan_log_n_esc = prepare_data(thesan_file, f_or_n=1, obvs=True,
-                                                                                dusty=dusty, eps=True, add_vars=['redshift_full'])
+# thesan_file = 'cat_dusttestszeb_test.hdf5'
+thesan_keys, thesan_log_vars, thesan_log_f_esc, thesan_log_n_esc = prepare_data(thesan_file,
+                                                                                f_or_n=1,
+                                                                                obvs=True,
+                                                                                dusty=dusty,
+                                                                                eps=True,
+                                                                                ssfr50_cut=False,
+                                                                                add_vars=['redshift_full'])
+
+# select only galaxies from Thesan with M_UV <= -13
 thesan_log_uv_mag = thesan_log_vars[3]
 thesan_log_star_mass = thesan_log_vars[2]
-thesan_redshift = 10**thesan_log_vars[-1]
+thesan_selection = np.where(
+    (thesan_log_uv_mag <= -13)
+    # & (thesan_log_star_mass >= 6.0)
+    )[0]
+thesan_log_uv_mag = thesan_log_uv_mag[thesan_selection]
+thesan_log_star_mass = thesan_log_star_mass[thesan_selection]
+thesan_redshift = 10**thesan_log_vars[-1][thesan_selection]
+thesan_log_n_esc = thesan_log_n_esc[thesan_selection]
+print('thesan rows remaining:', len(thesan_log_n_esc))
 
 # Prepare the observational data
 with fits.open("prosp_properties_GOODSS.fits") as hdul1:
@@ -81,13 +97,20 @@ bad_ID = np.array(bad_data1['ID'].tolist() + bad_data2['ID'].tolist())
 bad_indices = np.where(np.isin(ID, bad_ID))[0].tolist()
 print(f"diffraction spike rows: {len(bad_indices)}")
 
-# removes any rows that have zero, nan, or infinity for the vars; signal to noise SN(F444W) < 3; and red_chi2(JWST) > 1
+# remove any rows that have M_UV > -13
+b_i = [index for index, val in enumerate(list(obvs_uv_mag)) if val > -13]
+print(f"M_UV > -13 rows: {len(b_i)}")
+bad_indices += b_i
+
+# removes any rows that have signal to noise SN(F444W) < 3 or red_chi2(JWST) > 1
 b_i = [index for index, val in enumerate(list(obvs_data['SN(F444W)'])) if val < 3]
 print(f"SN(F444W) < 3 rows: {len(b_i)}")
 bad_indices += b_i
-b_i += [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 1]
+b_i = [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 1]
 print(f"red_chi2(JWST) > 1 rows: {len(b_i)}")
 bad_indices += b_i
+
+# remove any rows that have zero, nan, or infinity for any of the vars
 for i in range(len(obvs_n_esc_vars)):
     b_i = [index for index, val in enumerate(list((obvs_n_esc_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or np.isnan(val))]
@@ -219,7 +242,7 @@ if jwst_sch_funcs:
     sch_uv_alpha_fit |= {9.8: -2.36, 12.8: -2.23}
     sch_uv_alpha_fit_err |= {9.8: 0.19, 12.8: 0.31}
     sch_uv_phi_fit |= {9.8: 0.10070, 12.8: 0.04083}
-    sch_uv_phi_fit_err |= {9.8: 0.08210, 12.8: 0.02563}
+    sch_uv_phi_fit_err |= {9.8: 0.08210, 12.8: 0.02087}
     sch_uv_mag_fit |= {9.8: -20.32, 12.8: -20.54}
     sch_uv_mag_fit_err |= {9.8: 0.48, 12.8: 0.48}
 
@@ -312,7 +335,7 @@ def dpl_uv_convolved(mag_min, mag_max, sigma_mag, uv_alpha_fit, uv_beta_fit, uv_
     return interp1d(mags, phi_conv, bounds_error=False, fill_value=0, assume_sorted=True)
 
 
-sigma_mag = [0.693, 0.703][dusty] # standard deviation of UV magnitude and n_esc residuals
+sigma_mag = [0.662, 0.660][dusty] # standard deviation of UV magnitude and n_esc residuals
 # sigma_mag = 1.4
 n_bins = 2000 # number of bins for UV convolution
 n_mc = 20000 # number of Monte-Carlo samples for N_esc integrations
@@ -421,20 +444,43 @@ for cat in range(len(all_log_n_esc)):
         log_sch_uv_N_escs = np.log10(sch_uv_N_escs)
         log_sch_uv_err_low = log_sch_uv_N_escs - np.log10(sch_uv_N_escs_low)
         log_sch_uv_err_high = np.log10(sch_uv_N_escs_high) - log_sch_uv_N_escs
-        sch_weights = 2 / (log_sch_uv_err_low + log_sch_uv_err_high)
+        sch_errors = 0.5 * (log_sch_uv_err_low + log_sch_uv_err_high)
+        sch_weights = 1 / sch_errors
+
+        # Add anchor points to stop Splines diverging to infinity
+        sch_uv_redshifts_ext = np.concatenate([sch_uv_redshifts, [20, 22, 24]])
+        log_sch_uv_N_escs_ext = np.concatenate([log_sch_uv_N_escs, [49, 48.5, 48]])
+        log_sch_uv_err_low_ext = np.concatenate([log_sch_uv_err_low, [1, 1, 1]])
+        log_sch_uv_err_high_ext = np.concatenate([log_sch_uv_err_high, [1, 1, 1]])
+        sch_errors_ext = 0.5 * (log_sch_uv_err_low_ext + log_sch_uv_err_high_ext)
+        sch_weights_ext = 1 / sch_errors_ext
 
         # interpolates N_ion as a function of redshift using a polynomial fit and a spline fit
-        sch_poly_coeffs, sch_poly_cov = np.polyfit(1 + sch_uv_redshifts, log_sch_uv_N_escs, deg=3, w=sch_weights, cov=True)
+        degree = 3
+        sch_poly_coeffs, sch_poly_cov = np.polyfit(1 + sch_uv_redshifts_ext, log_sch_uv_N_escs_ext, deg=degree, w=sch_weights_ext, cov=True)
         sch_poly_coeffs_errors = np.sqrt(np.diag(sch_poly_cov))
         sch_polynomial = np.poly1d(sch_poly_coeffs)
-        sch_smooth = (0.2, 0.04)[jwst_sch_funcs]
-        sch_spline = UnivariateSpline(sch_uv_redshifts, log_sch_uv_N_escs,
-                                w=sch_weights, k=3, s=sch_smooth)
-        sch_spline_high = UnivariateSpline(sch_uv_redshifts, log_sch_uv_N_escs + log_sch_uv_err_high,
-                                    w=sch_weights, k=3, s=sch_smooth)
-        sch_spline_low = UnivariateSpline(sch_uv_redshifts, log_sch_uv_N_escs - log_sch_uv_err_low,
-                                    w=sch_weights, k=3, s=sch_smooth)
+        sch_smooth = (0.2, 0.05)[jwst_sch_funcs]
+        sch_spline = UnivariateSpline(sch_uv_redshifts_ext, log_sch_uv_N_escs_ext,
+                                w=sch_weights_ext, k=degree, s=sch_smooth)
+        sch_spline_high = UnivariateSpline(sch_uv_redshifts_ext, log_sch_uv_N_escs_ext + log_sch_uv_err_high_ext/2,
+                                w=sch_weights_ext, k=degree, s=sch_smooth)
+        sch_spline_low = UnivariateSpline(sch_uv_redshifts_ext, log_sch_uv_N_escs_ext - log_sch_uv_err_low_ext/2,
+                                w=sch_weights_ext, k=degree, s=sch_smooth)
         
+        # # Use Monte Carlo Analysis to generate upper and lower bounds for spline coefficents for error propagation
+        # n_mc_spline = 1000
+        # z_evals = np.linspace(sch_uv_redshifts[0], sch_uv_redshifts[-1], 1000)
+        # mc_curve_vals = np.zeros((n_mc_spline, len(z_evals)))
+        # for i in range(n_mc_spline):
+        #     N_escs_shifted = log_sch_uv_N_escs_ext + np.random.normal(scale=sch_errors_ext, size=len(sch_errors_ext))
+        #     shifted_spline = UnivariateSpline(sch_uv_redshifts_ext, N_escs_shifted, w=sch_weights_ext, k=degree, s=len(sch_uv_redshifts_ext))
+        #     mc_curve_vals[i] = shifted_spline(z_evals)
+        # mc_curve_mean = mc_curve_vals.mean(axis=0)
+        # mc_curve_std = mc_curve_vals.std(axis=0, ddof=1)
+        # sch_spline_high = interp1d(z_evals, mc_curve_mean + mc_curve_std, kind='cubic', fill_value='extrapolate')
+        # sch_spline_low = interp1d(z_evals, mc_curve_mean - mc_curve_std, kind='cubic', fill_value='extrapolate')
+
         all_log_sch_uv_N_escs.append(log_sch_uv_N_escs)
         all_log_sch_uv_err_low.append(log_sch_uv_err_low)
         all_log_sch_uv_err_high.append(log_sch_uv_err_high)
@@ -478,19 +524,28 @@ for cat in range(len(all_log_n_esc)):
             log_dpl_uv_N_escs = np.log10(dpl_uv_N_escs)
             log_dpl_uv_err_low = log_dpl_uv_N_escs - np.log10(dpl_uv_N_escs_low)
             log_dpl_uv_err_high = np.log10(dpl_uv_N_escs_high) - log_dpl_uv_N_escs
-            dpl_weights = 2 / (log_dpl_uv_err_low + log_dpl_uv_err_high)
+            dpl_errors = 0.5 * (log_dpl_uv_err_low + log_dpl_uv_err_high)
+            dpl_weights = 1 / dpl_errors
+
+            # Add anchor points to stop Splines diverging to infinity
+            dpl_uv_redshifts_ext = np.concatenate([dpl_uv_redshifts, [20, 22, 24]])
+            log_dpl_uv_N_escs_ext = np.concatenate([log_dpl_uv_N_escs, [49, 48.5, 48]])
+            log_dpl_uv_err_low_ext = np.concatenate([log_dpl_uv_err_low, [1, 1, 1]])
+            log_dpl_uv_err_high_ext = np.concatenate([log_dpl_uv_err_high, [1, 1, 1]])
+            dpl_errors_ext = 0.5 * (log_dpl_uv_err_low_ext + log_dpl_uv_err_high_ext)
+            dpl_weights_ext = 1 / dpl_errors_ext
 
             # interpolates N_ion as a function of redshift using a polynomial fit and a spline fit
-            dpl_poly_coeffs, dpl_poly_cov = np.polyfit(1 + dpl_uv_redshifts, log_dpl_uv_N_escs, deg=3, w=dpl_weights, cov=True)
+            dpl_poly_coeffs, dpl_poly_cov = np.polyfit(1 + dpl_uv_redshifts_ext, log_dpl_uv_N_escs_ext, deg=3, w=dpl_weights_ext, cov=True)
             dpl_poly_coeffs_errors = np.sqrt(np.diag(dpl_poly_cov))
             dpl_polynomial = np.poly1d(dpl_poly_coeffs)
-            dpl_smooth = (0.2, 0.04)[jwst_sch_funcs]
-            dpl_spline = UnivariateSpline(dpl_uv_redshifts, log_dpl_uv_N_escs,
-                                    w=dpl_weights, k=3, s=dpl_smooth)
-            dpl_spline_high = UnivariateSpline(dpl_uv_redshifts, log_dpl_uv_N_escs + log_dpl_uv_err_high,
-                                        w=dpl_weights, k=3, s=dpl_smooth)
-            dpl_spline_low = UnivariateSpline(dpl_uv_redshifts, log_dpl_uv_N_escs - log_dpl_uv_err_low,
-                                        w=dpl_weights, k=3, s=dpl_smooth)
+            dpl_smooth = (0.2, 0.05)[jwst_sch_funcs]
+            dpl_spline = UnivariateSpline(dpl_uv_redshifts_ext, log_dpl_uv_N_escs_ext,
+                                    w=dpl_weights_ext, k=3, s=dpl_smooth)
+            dpl_spline_high = UnivariateSpline(dpl_uv_redshifts_ext, log_dpl_uv_N_escs_ext + log_dpl_uv_err_high_ext/2,
+                                        w=dpl_weights_ext, k=3, s=dpl_smooth)
+            dpl_spline_low = UnivariateSpline(dpl_uv_redshifts_ext, log_dpl_uv_N_escs_ext - log_dpl_uv_err_low_ext/2,
+                                        w=dpl_weights_ext, k=3, s=dpl_smooth)
             # with open("final_graph_generation/spline/uv_N_ion_spline_dpl.pkl", "wb") as f:
             #     pickle.dump(dpl_spline, f)
             # with open("final_graph_generation/spline/uv_N_ion_spline_high_dpl.pkl", "wb") as f:
@@ -609,8 +664,8 @@ def integrand_log_mass(log_mass, z, a, b, c, m_alpha_fit, log_m_phi_fit, log_m_m
 
 if include_stellar_mass:
 
-    sigma_mass = [1.020, 0.973][dusty] # standard deviation of stellar mass and n_esc residuals
-    sigma_mass = [0.455, 0.471][dusty]  # standard deviation of stellar mass and n_esc residuals reversed
+    sigma_mass = [0.865, 0.858][dusty] # standard deviation of stellar mass and n_esc residuals
+    #sigma_mass = [0.427, 0.439][dusty]  # standard deviation of stellar mass and n_esc residuals reversed
     n_bins = 2000 # number of bins for stellar mass convolution
     n_mc = 2000 # number of Monte-Carlo samples for N_esc integrations
     log_mass_min, log_mass_max = 6, 12 # logarithmic stellar mass limits for integrations
@@ -928,7 +983,11 @@ if not split_contribution:
     with open("final_graph_generation/splines/thesan_uv_N_ion_spline_low_sch.pkl", "wb") as f:
         pickle.dump(all_sch_spline_low[0], f)
     # ax.plot(z_space, all_sch_spline[0](z_space), alpha = 0.8, linestyle='-', c='black', linewidth=2,
-    #         zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Spline Fit')
+    #         zorder=3, label='UV $\dot{n}_\mathrm{ion}$ Spline Fit')
+    # ax.plot(z_space, all_sch_spline_high[0](z_space), alpha = 0.8, linestyle='-', c='saddlebrown', linewidth=2,
+    #         zorder=3, label='UV $\dot{n}_\mathrm{ion}$ Spline Fit Upper Bound')
+    # ax.plot(z_space, all_sch_spline_low[0](z_space), alpha = 0.8, linestyle='-', c='darkred', linewidth=2,
+    #         zorder=3, label='UV $\dot{n}_\mathrm{ion}$ Spline Fit Lower Bound')
     thesan_emissivity_data = np.column_stack((sch_uv_redshifts, all_log_sch_uv_N_escs[0], all_log_sch_uv_err_low[0], all_log_sch_uv_err_high[0]))
     np.savetxt(f'final_graph_generation/emissivities/thesan_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.csv', thesan_emissivity_data)
     with open(f"final_graph_generation/splines/thesan_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.pkl", "wb") as f:
@@ -948,10 +1007,14 @@ if not split_contribution:
         with open("final_graph_generation/splines/observational_uv_N_ion_spline_low_sch.pkl", "wb") as f:
             pickle.dump(all_sch_spline_low[1], f)
         # ax.plot(z_space, all_sch_spline[1](z_space), alpha = 0.8, linestyle='-', c='black', linewidth=2,
-        #         zorder=3, label='UV $\dot{N}_\mathrm{ion}$ Spline Fit')
+        #         zorder=3, label='UV $\dot{n}_\mathrm{ion}$ Spline Fit')
         # with open(f"final_graph_generation/splines/observational_uv_N_ion_spline_sch_{str(sigma_mag)}.pkl", "wb") as f:
         #     pickle.dump(all_sch_spline[1], f)
-    
+        observational_emissivity_data = np.column_stack((sch_uv_redshifts, all_log_sch_uv_N_escs[1], all_log_sch_uv_err_low[1], all_log_sch_uv_err_high[1]))
+        np.savetxt(f'final_graph_generation/emissivities/observational_N_ion.csv', observational_emissivity_data)
+        with open(f"final_graph_generation/splines/observational_N_ion.pkl", "wb") as f:
+            pickle.dump(all_sch_spline[1], f)
+
     if include_dpl:
         # plot this work's Thesan-Zoom derived DPL UV magnitude N_esc integrations
         ax.errorbar(dpl_uv_redshifts, all_log_dpl_uv_N_escs[0], yerr=(all_log_dpl_uv_err_low[0], all_log_dpl_uv_err_high[0]),
@@ -965,7 +1028,7 @@ if not split_contribution:
         #             fmt='none', c='crimson', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
         # ax.plot(dpl_uv_redshifts, all_log_dpl_uv_N_escs[1], linestyle='--', c='crimson', linewidth=2.5, alpha=0.8, zorder=2)
         # ax.scatter(dpl_uv_redshifts, all_log_dpl_uv_N_escs[1], s=150, c='crimson', edgecolors='black', zorder=5,
-        #         label='$\dot{N}_\mathrm{ion}$, $M_\mathrm{UV}$ DPL LFs')
+        #         label='$\dot{n}_\mathrm{ion}$, $M_\mathrm{UV}$ DPL LFs')
 
     if include_stellar_mass:
         # plot this work's Thesan-Zoom derived stellar mass N_esc integrations
@@ -980,7 +1043,7 @@ if not split_contribution:
         #             fmt='none', c='darkorange', elinewidth=2, capsize=5, alpha=0.8, zorder=3)
         # ax.plot(m_redshifts, all_log_m_N_escs[1], linestyle='--', c='darkorange', linewidth=2.5, alpha=0.8, zorder=4)
         # ax.scatter(m_redshifts, all_log_m_N_escs[1], s=150, c='darkorange',  edgecolors='black', zorder=5,
-        #         label='$\dot{N}_\mathrm{ion}$, $M_*$ Schechter Functions')
+        #         label='$\dot{n}_\mathrm{ion}$, $M_*$ Schechter Functions')
 
     if constant_f_esc:
         ax.errorbar(sch_uv_redshifts, all_log_sch_uv_N_escs[2], yerr=(all_log_sch_uv_err_low[2], all_log_sch_uv_err_high[2]),
@@ -992,7 +1055,7 @@ if not split_contribution:
             pickle.dump(all_sch_spline[2], f)   
 
     ax.set_xlabel("$z$")
-    ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
+    ax.set_ylabel("$\mathrm{log}_{10}(\dot{n}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
     ax.yaxis.set_label_coords(-0.075, 0.5)
     ax.set_xlim(z_range)
     ax.set_ylim(((48.9, 51.6), (48.9, 52.1))[include_stellar_mass])
@@ -1039,7 +1102,7 @@ else:
         ax.set_xlabel('$z$')
         ax.tick_params(axis='x', which='both', bottom=False, top=False)
         ax.set_xticks(redshifts)
-        ax.set_ylabel('$\dot{N}_{\mathrm{ion}} \; [10^{50} \; \mathrm{s^{-1} \; cMpc^{-3}}]$')
+        ax.set_ylabel('$\dot{n}_{\mathrm{ion}} \; [10^{50} \; \mathrm{s^{-1} \; cMpc^{-3}}]$')
         ax.yaxis.set_label_coords(-0.05, 0.5)
         ax.set_xlim(4.25, 10.75)
         ax.set_ylim(0, 10)
@@ -1058,5 +1121,5 @@ else:
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()

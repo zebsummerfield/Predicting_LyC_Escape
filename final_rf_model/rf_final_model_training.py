@@ -23,11 +23,8 @@ dusty = True
 gal = False
 
 folder = "final_rf_model/"
-if dusty:
-    file = 'cat_dusttestszeb.hdf5'
-else:
-    file = 'cat.hdf5'
-# file = 'cat_dusttestszeb_mcrtesc.hdf5'
+file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+#file = 'cat_dusttestszeb_largetest.hdf5'
 
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
@@ -67,6 +64,24 @@ with h5py.File(file, 'r') as hdf:
     else:
         uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_full'])
         uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_full'])
+
+    # # RHD variables
+    # ha_lum = np.array(hdf['ha_lum_obs_full'])
+    # ha_size = np.array(hdf['ha_size_obs_full'])
+    # uv_int_lum = np.array(hdf['uv_lum_int_fdust_40_full'])
+    # uv_obs_lum = np.array(hdf['uv_lum_obs_fdust_40_full'])
+    # uv_size = np.array(hdf['uv_size_obs_2d_full'])
+    # f_esc = np.array(hdf['f_esc_fdust_40_vir_full'])
+    # n_esc = np.array(hdf['Ndot_LyC_fdust_40_vir_full'])
+
+    # # MCRT variables 
+    # ha_lum = np.array(hdf['ha_mcrt_lum_obs_full'])
+    # ha_size = np.array(hdf['ha_mcrt_size_obs_full'])
+    # uv_int_lum = np.array(hdf['uv_lum_int_fdust_40_full'])
+    # uv_obs_lum = np.array(hdf['uv_lum_obs_fdust_40_full'])
+    # uv_size = np.array(hdf['uv_size_obs_2d_full'])
+    # f_esc = np.array(hdf['f_esc_mcrt_fdust_40_vir_full'])
+    # n_esc = np.array(hdf['Ndot_LyC_mcrt_fdust_40_vir_full'])
 
     # fixing gas mass units
     gas_mass = gas_mass / (0.76 / 1.6735575e-24)

@@ -171,9 +171,9 @@ for i_1 in range(len(axes)):
 
         # run target prediction using loaded model
         f_or_n_str = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
-                      '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
+                      '$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$'][i_2]
         f_or_n_str_no_unit = ['$\mathrm{log}_{10}(f_\mathrm{esc})$',
-                              '$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc})$'][i_2]
+                              '$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc})$'][i_2]
         print((x_str_no_unit, f_or_n_str_no_unit))
 
         if not dusty:
@@ -216,6 +216,12 @@ for i_1 in range(len(axes)):
         z_err_sym = (obvs_redshift_low_error + obvs_redshift_high_error) / 2
         log_z_err_sym = z_err_sym / (np.log(10) * (1 + z))
 
+        # Fit using only galaxies from Thesan with M_UV <= -13 or log_10(M_*) >= 6
+        selection = np.where(
+            [(x <= -13), (x >= 6.0)][i_1]
+            )[0]
+        print('observational rows used in fitting:', len(selection))
+
         if mc:
             # Monte Carlo to estimate fit parameter uncertainties
             x_err_median = np.median(x_err_sym[x_err_sym > 0]) * 1e-6
@@ -226,20 +232,20 @@ for i_1 in range(len(axes)):
 
             for k in range(mc_iters):
                 # bootstrap indices + perturb by measurement errors
-                idx = np.random.choice(len(x), size=sub_size, replace=False)
-                xb = x[idx] + np.random.normal(0, x_err_sym[idx])
-                yb = y[idx] + np.random.normal(0, y_err[idx])
+                idx = np.random.choice(len(x[selection]), size=sub_size, replace=False)
+                xb = x[selection][idx] + np.random.normal(0, x_err_sym[selection][idx])
+                yb = y[selection][idx] + np.random.normal(0, y_err[selection][idx])
 
                 if least_squares:
                     # Fit using Weighted Least Squares Regression, accounting only for y errors
-                    popt, _ = curve_fit(curve_fit_func_1var, xb, yb, sigma=y_err[idx], absolute_sigma=True)
+                    popt, _ = curve_fit(curve_fit_func_1var, xb, yb, sigma=y_err[selection][idx], absolute_sigma=True)
                     betas[k] = popt[0], popt[1]
                 
                 else:
                     # Fit using Orthogonal Distance Regression (ODR) to account for errors in both x and y
                     model_mc = odr.Model(linear_1var)
-                    data_mc = odr.RealData(xb, yb, sx=x_err_sym[idx], sy=y_err[idx])
-                    out_mc = odr.ODR(data_mc, model_mc, beta0=[0, np.median(y)]).run()
+                    data_mc = odr.RealData(xb, yb, sx=x_err_sym[selection][idx], sy=y_err[selection][idx])
+                    out_mc = odr.ODR(data_mc, model_mc, beta0=[0, np.median(y[selection])]).run()
                     betas[k] = out_mc.beta
 
             # MC medians and 16/84 percentiles
@@ -253,12 +259,12 @@ for i_1 in range(len(axes)):
         else:
             if least_squares:
                 # Fit using Weighted Least Squares Regression, accounting only for y errors
-                popt, pcov = curve_fit(curve_fit_func_1var, x, y, sigma=y_err, absolute_sigma=True)
+                popt, pcov = curve_fit(curve_fit_func_1var, x[selection], y[selection], sigma=y_err[selection], absolute_sigma=True)
                 a, b = popt
                 a_err, b_err= np.sqrt(np.diag(pcov))
 
                 # Print fit parameters for Weighted Least Squares Regression including redshift dependence
-                popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x, log_z), y, sigma=y_err, absolute_sigma=True)
+                popt_2, pcov_2 = curve_fit(curve_fit_func_2var, (x[selection], log_z[selection]), y[selection], sigma=y_err[selection], absolute_sigma=True)
                 a_2, b_2, c_2 = popt_2
 
             else:
@@ -271,7 +277,7 @@ for i_1 in range(len(axes)):
                 log_z_err_sym[log_z_err_sym <= 0] = log_z_err_median
                 
                 model = odr.Model(linear_1var)
-                data = odr.RealData(x, y, sx=x_err_sym, sy=y_err)
+                data = odr.RealData(x[selection], y[selection], sx=x_err_sym[selection], sy=y_err[selection])
                 odr_inst = odr.ODR(data, model, beta0=[0, 0])
                 out = odr_inst.run()
 
@@ -281,7 +287,8 @@ for i_1 in range(len(axes)):
 
                 # Print fit parameters for Orthogonal Distance Regression including redshift dependence
                 model_2 = odr.Model(linear_2var)
-                data_2 = odr.RealData((x, log_z), y, sx=(x_err_sym, log_z_err_sym), sy=y_err)
+                data_2 = odr.RealData((x[selection], log_z[selection]), y[selection],
+                                      sx=(x_err_sym[selection], log_z_err_sym[selection]), sy=y_err[selection])
                 odr_inst_2 = odr.ODR(data_2, model_2, beta0=[0, 0, 0])
                 out_2 = odr_inst_2.run()
 
@@ -419,7 +426,9 @@ for i_1 in range(len(axes)):
                 ax.set_ylabel(f_or_n_str, labelpad=10)
             ax.set_xlim(x_range)
             ax.set_ylim(y_range)
+            ax.tick_params(color='white')
             ax.xaxis.set_major_locator(MaxNLocator(nbins=8, integer=True))
+            print('')
                     
         ax.set_box_aspect(1)
         ax.grid(False)
@@ -437,5 +446,5 @@ else:
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "png")[histogram], bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph." + ("jpg", "pdf")[histogram], bbox_inches='tight', dpi=500)
 plt.show()

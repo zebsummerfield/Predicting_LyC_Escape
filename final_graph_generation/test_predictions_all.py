@@ -26,9 +26,9 @@ file4 = folder + f'n_esc_rf_observational_charlotte{dusty_str}_test_train.json'
 files = [file1, file2, file3, file4]
 model_strs = ['Model A', 'Model B', 'Model C', 'Model D']
 model_strs_2 = ['Best $f_\mathrm{esc}$',
-                'Best $\dot{n}_\mathrm{ion,esc}$',
+                'Best $\dot{N}_\mathrm{ion,esc}$',
                 'Observational $f_\mathrm{esc}$', 
-                'Observational $\dot{n}_\mathrm{ion,esc}$']
+                'Observational $\dot{N}_\mathrm{ion,esc}$']
 model_strs_3 = 'Predictor'
 colours = [mpl.colormaps['Purples'](1.0),
            mpl.colormaps['Reds'](1.0),
@@ -67,8 +67,8 @@ cbar_ax4 = fig.add_axes([0.775, 0.92, box_width, 0.02]) # colorbar axis for mode
 cbars = [cbar_ax1, cbar_ax2, cbar_ax3, cbar_ax4]
 hists = []
 
-x_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$ Predicted", "$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$ Predicted"]
-y_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$", "$\mathrm{log}_{10}(\dot{n}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$"]
+x_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$ Predicted", "$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$ Predicted"]
+y_strs = ["$\mathrm{log}_{10}(f_\mathrm{esc})$", "$\mathrm{log}_{10}(\dot{N}_\mathrm{ion,esc} \; [\mathrm{s^{-1}}])$"]
 
 for m_i in range(len(model_strs)):
     x_str = x_strs[m_i % 2]
@@ -206,5 +206,5 @@ for cbar in cbars:
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()
