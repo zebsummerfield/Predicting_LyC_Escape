@@ -25,6 +25,9 @@ include_charlotte = True
 # True to include the original Thesan N_ion calculations in plot
 include_thesan = True
 
+# True to include the N_ion calculations from the 2020 Naidu paper in plot
+include_naidu = True
+
 # True to plot M_UV,max varying
 vary_max = False
 
@@ -32,6 +35,8 @@ vary_max = False
 vary_min = False
 
 folder = "final_graph_generation/emissivities/"
+constraints_folder = 'other_paper_graphs/'
+
 if vary_max:
     mag_range = (-10, -17)
     abs_mag_list = list(range(abs(mag_range[0]), abs(mag_range[1]) + 1))
@@ -83,7 +88,6 @@ if include_constraints:
     }
 
     # plot observational constraints on N_ion from Kuhlen (2012)
-    # constraints_folder = 'other_paper_graphs/'
     # kuhlen_2012 = np.zeros((12, 4))
     # kuhlen_2012_files = ['kuhlen_2012_Nion_values.csv',
     #                       'kuhlen_2012_Nion_errors_low.csv',
@@ -103,10 +107,9 @@ if include_constraints:
     # ax.scatter(kuhlen_2012[:,0], kuhlen_2012[:,1], s=50, marker='^', c='black', edgecolors='black',
     #            zorder=4, label='kuhlen et al. (2012)')
     # ax.fill_between(kuhlen_2012[:,0], kuhlen_2012[:,2], kuhlen_2012[:,3],
-    #                 color=constraint_colours["kuhlen"], alpha=0.5, zorder=2, label='Kuhlen+2012')
+    #                 color=constraint_colours["kuhlen"], alpha=0.4, zorder=2, label='Kuhlen+2012')
 
     # plot observational constraints on N_ion from Becker (2013)
-    constraints_folder = 'other_paper_graphs/'
     becker_2013 = np.zeros((4, 4))
     becker_2013_files = ['becker_2013_Nion_values.csv',
                             'becker_2013_Nion_errors_low.csv',
@@ -126,10 +129,9 @@ if include_constraints:
     # ax.scatter(becker_2013[:,0], becker_2013[:,1], s=50, marker='o', c='black', edgecolors='black',
     #            zorder=4, label='Becker et al. (2013)')
     ax.fill_between(becker_2013[:,0], becker_2013[:,2], becker_2013[:,3],
-                    color=constraint_colours["becker"], alpha=0.5, zorder=2, label='Becker \& Bolton+2013')
+                    color=constraint_colours["becker"], alpha=0.4, zorder=2, label='Becker \& Bolton+2013')
 
     # plot observational constraints on N_ion from Gaikwad (2023)
-    constraints_folder = 'other_paper_graphs/'
     gaikwad_2023 = np.zeros((12, 4))
     gaikwad_2023_files = ['gaikwad_2023_Nion_values.csv',
                             'gaikwad_2023_Nion_errors_low.csv',
@@ -149,10 +151,9 @@ if include_constraints:
     # ax.scatter(gaikwad_2023[:,0], gaikwad_2023[:,1], s=50, marker='*', c='black', edgecolors='black',
     #            zorder=4, label='Gaikwad et al. (2023)')
     ax.fill_between(gaikwad_2023[:,0], gaikwad_2023[:,2], gaikwad_2023[:,3],
-                    color=constraint_colours["gaikwad"], alpha=0.5, zorder=2, label='Gaikwad+2023')
+                    color=constraint_colours["gaikwad"], alpha=0.4, zorder=2, label='Gaikwad+2023')
 
     # plot observational constraints on N_ion from Davies (2024)
-    # constraints_folder = 'other_paper_graphs/'
     # davies_2024 = np.zeros((5, 4))
     # davies_2024_files = ['davies_2024_Nion_values.csv',
     #                      'davies_2024_Nion_errors_low.csv',
@@ -172,7 +173,7 @@ if include_constraints:
     # ax.scatter(davies_2024[:,0], davies_2024[:,1], s=50, marker='*', c='black', edgecolors='black',
     #            zorder=4, label='Davies et al. (2024)')
     # ax.fill_between(davies_2024[:,0], davies_2024[:,2], davies_2024[:,3],
-    #                 color=constraint_colours["davies"], alpha=0.5, zorder=2, label='Davies+2024')
+    #                 color=constraint_colours["davies"], alpha=0.4, zorder=2, label='Davies+2024')
 
     # plot obsrevational constraints on N_ion from Rinaldi (2024)
     rinaldi_2024_z = [7, 8]
@@ -180,7 +181,7 @@ if include_constraints:
     rinaldi_2024_N_ion_err = np.array([0.45, 0.45])
     ax.fill_between(rinaldi_2024_z,
                     rinaldi_2024_N_ion - rinaldi_2024_N_ion_err, rinaldi_2024_N_ion + rinaldi_2024_N_ion_err,
-                    color=constraint_colours['rinaldi'], alpha=0.5, zorder=2, label='Rinaldi+2024')
+                    color=constraint_colours['rinaldi'], alpha=0.4, zorder=2, label='Rinaldi+2024')
 
 if include_charlotte:
     # plot Charlotte's N_ion integrations for her f_esc = 10% and f_esc Chisholm (2022) prescriptions
@@ -188,30 +189,35 @@ if include_charlotte:
     N_ion_f_esc_10 = [51.23478634, 50.85474357, 50.60201125, 50.57420019, 50.34034352, 49.99205213]
     N_ion_f_esc_chisholm = [50.76232333, 50.52949668, 50.52709877, 50.61663425, 50.36362092, 49.44427493]
     ax.errorbar(charlotte_z, N_ion_f_esc_10, yerr=0.3,
-                fmt='none', c='coral', elinewidth=2, alpha=0.8, capsize=0, zorder=2)
-    ax.plot(charlotte_z, N_ion_f_esc_10, linestyle=':', c='coral', linewidth=2.5, alpha=0.8, zorder=2)
-    ax.scatter(charlotte_z, N_ion_f_esc_10, s=150, marker='^', c='coral', edgecolors='black', zorder=3,
-            label='Simmonds+2024, $f_\mathrm{esc}$ = 10\%')
+                fmt='none', c='coral', elinewidth=2, alpha=0.8, capsize=0, zorder=3)
+    ax.plot(charlotte_z, N_ion_f_esc_10, linestyle=':', c='coral', linewidth=2.5, alpha=0.7, zorder=3)
+    ax.scatter(charlotte_z, N_ion_f_esc_10, s=100, marker='^', c='coral', edgecolors='black', zorder=4,
+            label='Simmonds+2024, $f_\mathrm{esc}$ = 10\%', alpha=0.8)
     ax.errorbar(charlotte_z, N_ion_f_esc_chisholm, yerr=0.3,
-                fmt='none', c='yellowgreen', elinewidth=2, alpha=0.8, capsize=0, zorder=2)
-    ax.plot(charlotte_z, N_ion_f_esc_chisholm, linestyle=':', c='yellowgreen', linewidth=2.5, alpha=0.8, zorder=2)
-    ax.scatter(charlotte_z, N_ion_f_esc_chisholm, s=150, marker='v', c='yellowgreen', edgecolors='black', zorder=3,
-            label='Simmonds+2024, $f_\mathrm{esc}$ = Chisholm+2022')
+                fmt='none', c='yellowgreen', elinewidth=2, alpha=0.8, capsize=0, zorder=3)
+    ax.plot(charlotte_z, N_ion_f_esc_chisholm, linestyle=':', c='yellowgreen', linewidth=2.5, alpha=0.7, zorder=3)
+    ax.scatter(charlotte_z, N_ion_f_esc_chisholm, s=100, marker='v', c='yellowgreen', edgecolors='black', zorder=4,
+            label='Simmonds+2024, $f_\mathrm{esc}$ = Chisholm+2022', alpha=0.8)
 
 if include_thesan:
-    constraints_folder = 'other_paper_graphs/'
     thesan_files = ['thesan1_Nion_values.csv',
                     'thesan2_Nion_values.csv']
     with open(constraints_folder + thesan_files[0], newline='', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
         thesan1 = np.transpose(np.array([row for row in reader])).astype('float64')
         thesan1[1] = np.log10(thesan1[1]) + 51
-    ax.plot(thesan1[0], thesan1[1], linestyle='-', c='red', linewidth=2.5, alpha=0.8, zorder=3, label='Garaldi+22, Thesan-1')
+    ax.plot(thesan1[0], thesan1[1], linestyle='-', c='red', linewidth=2.5, alpha=0.6, zorder=3, label='Garaldi+22, Thesan-1')
     with open(constraints_folder + thesan_files[1], newline='', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
         thesan2 = np.transpose(np.array([row for row in reader])).astype('float64')
         thesan2[1] = np.log10(thesan2[1]) + 51
-    ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=2.5, alpha=0.8, zorder=3, label='Garaldi+22, Thesan-2')
+    ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=2.5, alpha=0.5, zorder=3, label='Garaldi+22, Thesan-2')
+
+if include_naidu:
+    with open(constraints_folder + 'naidu_2020_Nion_values.csv', newline='', encoding='utf-8') as f:
+        reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+        naidu_2020 = np.transpose(np.array([row for row in reader])).astype('float64')
+    ax.plot(naidu_2020[0], naidu_2020[1], linestyle='-', c='green', linewidth=2.5, alpha=0.5, zorder=3, label='Naidu+2020')        
 
 if vary_max or vary_min:
     for index, mag in enumerate(abs_mag_list):
@@ -235,9 +241,9 @@ else:
     thesan_log_N_ion_err_low = thesan_data[:,2]
     thesan_log_N_ion_err_high = thesan_data[:,3]
     ax.errorbar(thesan_redshift, thesan_log_N_ion, yerr=(thesan_log_N_ion_err_low, thesan_log_N_ion_err_high),
-                fmt='none', c='darkviolet', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
-    ax.plot(thesan_redshift, thesan_log_N_ion, linestyle='--', c='darkviolet', linewidth=2.5, alpha=0.8, zorder=2)
-    ax.scatter(thesan_redshift, thesan_log_N_ion, s=150, c='darkviolet', edgecolors='black', zorder=5,
+                fmt='none', c='darkviolet', elinewidth=2, capsize=5, alpha=1, zorder=5)
+    ax.plot(thesan_redshift, thesan_log_N_ion, linestyle='--', c='darkviolet', linewidth=2.5, alpha=1, zorder=5)
+    ax.scatter(thesan_redshift, thesan_log_N_ion, s=150, c='darkviolet', edgecolors='black', zorder=6,
             label=(r'$\textsc{thesan-zoom}$-based (This Work)'))
 
     # plot this work's observational derived Schechter UV magnitude N_esc integrations
@@ -247,9 +253,9 @@ else:
     observational_log_N_ion_err_low = observational_data[:,2]
     observational_log_N_ion_err_high = observational_data[:,3]
     ax.errorbar(observational_redshift, observational_log_N_ion, yerr=(observational_log_N_ion_err_low, observational_log_N_ion_err_high),
-                fmt='none', c='darkcyan', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
-    ax.plot(observational_redshift, observational_log_N_ion, linestyle='--', c='darkcyan', linewidth=2.5, alpha=0.8, zorder=2)
-    ax.scatter(observational_redshift, observational_log_N_ion, s=150, c='darkcyan', edgecolors='black', zorder=5,
+                fmt='none', c='darkcyan', elinewidth=2, capsize=5, alpha=1, zorder=5)
+    ax.plot(observational_redshift, observational_log_N_ion, linestyle='--', c='darkcyan', linewidth=2.5, alpha=1, zorder=5)
+    ax.scatter(observational_redshift, observational_log_N_ion, s=150, c='darkcyan', edgecolors='black', zorder=6,
             label='JWST-based (This Work)')
 
 ax.set_xlabel("$z$")
@@ -272,5 +278,5 @@ plt.subplots_adjust(right=0.7)
 
 mpl.rcParams['figure.dpi'] = 500
 folder = "final_graph_generation/"
-fig.savefig(folder + "report_graphs/report_graph.png", bbox_inches='tight', dpi=500)
+fig.savefig(folder + "report_graphs/report_graph.pdf", bbox_inches='tight', dpi=500)
 plt.show()
