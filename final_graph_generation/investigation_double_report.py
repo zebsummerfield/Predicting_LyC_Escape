@@ -15,7 +15,8 @@ scatter = False
 dusty = True
 
 folder = "final_graph_generation/"
-file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+file = ['cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
+#file = 'cat_dusttestszeb_g2.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=0, obvs=obvs, dusty=dusty, eps=False,
                                                     add_vars=['stellar_mass_full', 'gas_mass_full'])
 print(keys)

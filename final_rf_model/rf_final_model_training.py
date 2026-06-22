@@ -10,10 +10,10 @@ import joblib
 from functions_old import *
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 0
+f_or_n = 1
 
 # True if model is generated to predict for an observational catalogue 
-obvs = False
+obvs = True
 obvs_cat = 'charlotte'  # 'charlotte' or 'lola'
 
 # True for dusty Thesan-Zoom catalogue, False for dust-free catalogue
@@ -23,19 +23,16 @@ dusty = True
 gal = False
 
 folder = "final_rf_model/"
-file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-#file = 'cat_dusttestszeb_largetest.hdf5'
+file = ['cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
 
 # loads both the catalogue of galaxies and their variables
 with h5py.File(file, 'r') as hdf:
 
     gal_str = ['', '_gal'][gal]
-    if gal:
-        f_esc = np.array(hdf['f_esc_gal_full'])
-        n_esc = np.array(hdf['Ndot_LyC_gal_full'])
-    else:
-        f_esc = np.array(hdf['f_esc_vir_full'])
-        n_esc = np.array(hdf['Ndot_LyC_vir_full'])
+    dust_str = ['', '_fdust_40'][dusty]
+
+    f_esc = np.array(hdf[f'f_esc{dust_str}_vir_full'])
+    n_esc = np.array(hdf[f'Ndot_LyC{dust_str}_vir_full'])
     resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
     redshift = np.array(hdf['redshift_full'])
     star_mass = np.array(hdf[f'stellar_mass{gal_str}_full'])
@@ -54,16 +51,11 @@ with h5py.File(file, 'r') as hdf:
     sfr_size = np.array(hdf['sfr_size_full'])
     # ha_size = np.array(hdf['ha_size_obs_full'])
     # uv_size = np.array(hdf['uv_size_obs_full'])
-    uv_size = np.array(hdf['uv_size_obs_2d_full'])
-    ha_size = np.array(hdf['ha_size_obs_2d_full'])
+    uv_size = np.array(hdf['uv_size_obs_full'])
+    ha_size = np.array(hdf['ha_size_obs_full'])
     sfr10_density = sfr10 / (np.pi * sfr_size**2)
-
-    if dusty:
-        uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_fdust_40_full'])
-        uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_fdust_40_full'])
-    else:
-        uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_full'])
-        uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_full'])
+    uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}{dust_str}_full'])
+    uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}{dust_str}_full'])
 
     # # RHD variables
     # ha_lum = np.array(hdf['ha_lum_obs_full'])
@@ -195,7 +187,7 @@ with h5py.File(file, 'r') as hdf:
     Y = [log_f_esc, log_n_esc][f_or_n]
 
 # run random forest 1000 times to get an average on importances and errors
-n = 10
+n = 1000
 test_mae_list = np.zeros(n)
 test_mse_list = np.zeros(n)
 train_mae_list = np.zeros(n)
@@ -252,9 +244,10 @@ for index, v in enumerate(keys):
 f_or_n_str = ['f_esc', 'n_esc'][f_or_n]
 obvs_str = ['final', 'observational'][obvs] + ['', f'_{obvs_cat}'][obvs]
 dust_str = ['', '_dusty'][dusty]
-testing = '_test'  # '_test' or ''
+testing = ''  # '_test' or ''
 # saves the best rf data to a json file
 with open(folder+f'{f_or_n_str}_rf_{obvs_str}{dust_str}_test_train{testing}.json', 'w') as f:
+    best_rf_data['mean_importances'] = np.mean(importances_list, axis=0).tolist()
     best_rf_data['std_importances'] = np.std(importances_list, axis=0).tolist()
     json.dump(best_rf_data, f)
 # saves the rf model to a pickle file
@@ -264,13 +257,13 @@ if obvs:
 mpl.rcParams.update({'font.size': 16})
 fig, ax = plt.subplots(figsize=(12,6))
 
-# min_importances = np.min(importances_list, axis=0)
-# max_importances = np.max(importances_list, axis=0)
-# mean_importances = np.mean(importances_list, axis=0)
+min_importances = np.min(importances_list, axis=0)
+max_importances = np.max(importances_list, axis=0)
+mean_importances = np.mean(importances_list, axis=0)
 std_importances = np.std(importances_list, axis=0)
-sorted_indices = np.argsort(importances_list[best_rf_index])[::-1]
+sorted_indices = np.argsort(mean_importances)[::-1]
 
-ax.bar(keys[sorted_indices], importances_list[best_rf_index][sorted_indices], 
+ax.bar(keys[sorted_indices], mean_importances[sorted_indices], 
        yerr=std_importances[sorted_indices], capsize=5, edgecolor='black')
 ax.set_ylabel('Importance')
 ax.set_xticklabels(keys[sorted_indices], rotation='vertical')

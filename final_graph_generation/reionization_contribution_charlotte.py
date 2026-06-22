@@ -31,6 +31,9 @@ dusty = True
 # Use a constant f_esc model for comparison
 constant_f_esc = False
 
+# Integrate the total ionising photon production as well as escape
+prod_and_esc = False
+
 folder = "final_rf_model/"
 if dusty:
     file = folder + 'n_esc_rf_observational_charlotte_dusty_test_train.json'
@@ -39,9 +42,8 @@ else:
 # file = folder + 'n_esc_rf_observational_charlotte_dusty_test_train_test.json'
 
 # Thesan data
-thesan_file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-# thesan_file = 'cat_dusttestszeb_mcrtesc.hdf5'
-# thesan_file = 'cat_dusttestszeb_test.hdf5'
+thesan_file = ['cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
+#thesan_file = 'cat_dusttestszeb_g2.hdf5'
 thesan_keys, thesan_log_vars, thesan_log_f_esc, thesan_log_n_esc = prepare_data(thesan_file,
                                                                                 f_or_n=1,
                                                                                 obvs=True,
@@ -61,6 +63,7 @@ thesan_log_uv_mag = thesan_log_uv_mag[thesan_selection]
 thesan_log_star_mass = thesan_log_star_mass[thesan_selection]
 thesan_redshift = 10**thesan_log_vars[-1][thesan_selection]
 thesan_log_n_esc = thesan_log_n_esc[thesan_selection]
+thesan_log_n_prod = thesan_log_n_esc - thesan_log_f_esc[thesan_selection]
 print('thesan rows remaining:', len(thesan_log_n_esc))
 
 # Prepare the observational data
@@ -102,17 +105,17 @@ b_i = [index for index, val in enumerate(list(obvs_uv_mag)) if val > -13]
 print(f"M_UV > -13 rows: {len(b_i)}")
 bad_indices += b_i
 
-# removes any rows that have signal to noise SN(F444W) < 3 or red_chi2(JWST) > 1
+# removes any rows that have signal to noise SN(F444W) < 3 or red_chi2(JWST) > 10
 b_i = [index for index, val in enumerate(list(obvs_data['SN(F444W)'])) if val < 3]
 print(f"SN(F444W) < 3 rows: {len(b_i)}")
 bad_indices += b_i
-b_i = [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 1]
-print(f"red_chi2(JWST) > 1 rows: {len(b_i)}")
+b_i = [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 10]
+print(f"red_chi2(JWST) > 10 rows: {len(b_i)}")
 bad_indices += b_i
 
 # remove any rows that have zero, nan, or infinity for any of the vars
-for i in range(len(obvs_n_esc_vars)):
-    b_i = [index for index, val in enumerate(list((obvs_n_esc_vars)[i]))
+for i in range(len(obvs_log_n_esc_vars)):
+    b_i = [index for index, val in enumerate(list((obvs_log_n_esc_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or np.isnan(val))]
     print(f"feature {i+1} bad rows: {len(b_i)}")
     bad_indices += b_i
@@ -171,13 +174,13 @@ all_log_uv_mag = [thesan_log_uv_mag, obvs_log_uv_mag]
 all_log_star_mass = [thesan_log_star_mass, obvs_log_star_mass]
 all_redshift = [thesan_redshift, obvs_redshift]
 all_log_n_esc_err = [np.zeros_like(thesan_log_n_esc), pred_mae]
-all_log_uv_mag_err = [np.zeros_like(thesan_log_uv_mag), (obvs_uv_mag_high_error + obvs_uv_mag_low_error) / 2]
-all_log_star_mass_err = [np.zeros_like(thesan_log_star_mass), (obvs_star_mass_high_error + obvs_star_mass_low_error) / 2]
-all_redshift_err = [np.zeros_like(thesan_redshift), (obvs_redshift_high_error + obvs_redshift_low_error) / 2]
+all_log_uv_mag_err = [np.zeros_like(thesan_log_uv_mag), (np.abs(obvs_uv_mag_high_error) + np.abs(obvs_uv_mag_low_error)) / 2]
+all_log_star_mass_err = [np.zeros_like(thesan_log_star_mass), (np.abs(obvs_star_mass_high_error) + np.abs(obvs_star_mass_low_error)) / 2]
+all_redshift_err = [np.zeros_like(thesan_redshift), (np.abs(obvs_redshift_high_error) + np.abs(obvs_redshift_low_error)) / 2]
 
 # Constant f_esc model
 if constant_f_esc:
-    xi_ion_const = 10**25.22
+    xi_ion_const = 10**25.05
     f_esc_const = 0.1 
     lum_to_tenpc = 4 * np.pi * (10 * 3.086e18)**2
     log_uv_mag_const = np.linspace(-20, -13, 100)
@@ -191,7 +194,17 @@ if constant_f_esc:
     all_log_uv_mag_err.append(np.zeros_like(log_uv_mag_const))
     all_log_star_mass_err.append(np.zeros_like(log_uv_mag_const))
     all_redshift_err.append(np.zeros_like(log_uv_mag_const))
-    
+
+# Integrate the total thesan ionising photon production as well
+if prod_and_esc:
+    all_log_n_esc.append(thesan_log_n_prod)
+    all_log_uv_mag.append(thesan_log_uv_mag)
+    all_log_star_mass.append(thesan_log_star_mass)
+    all_redshift.append(thesan_redshift)
+    all_log_n_esc_err.append(np.zeros_like(thesan_log_n_prod))
+    all_log_uv_mag_err.append(np.zeros_like(thesan_log_uv_mag))
+    all_log_star_mass_err.append(np.zeros_like(thesan_log_star_mass))
+    all_redshift_err.append(np.zeros_like(thesan_redshift))
 
 def linear_1var(p, X):
     a, b = p
@@ -302,9 +315,9 @@ def schechter_uv_convolved(mag_min, mag_max, sigma_mag, uv_alpha_fit, uv_phi_fit
         n_kernel += 1
     delta_mags = np.linspace(-kernel_extent, kernel_extent, n_kernel)
     gaussian = np.exp(-0.5 * (delta_mags / sigma_mag)**2)
-    gaussian /= np.sum(gaussian) * dM
+    gaussian /= np.sum(gaussian)
     # convolution
-    phi_conv = fftconvolve(phi, gaussian, mode='same') * dM
+    phi_conv = fftconvolve(phi, gaussian, mode='same')
     # return interpolated convoluted UV luminosity function
     return interp1d(mags, phi_conv, bounds_error=False, fill_value=0, assume_sorted=True)
 
@@ -335,9 +348,9 @@ def dpl_uv_convolved(mag_min, mag_max, sigma_mag, uv_alpha_fit, uv_beta_fit, uv_
     return interp1d(mags, phi_conv, bounds_error=False, fill_value=0, assume_sorted=True)
 
 
-sigma_mag = [0.662, 0.660][dusty] # standard deviation of UV magnitude and n_esc residuals
+sigma_mag = 0.725 # standard deviation of UV magnitude and n_esc residuals
 # sigma_mag = 1.4
-n_bins = 2000 # number of bins for UV convolution
+n_bins = 20000 # number of bins for UV convolution
 n_mc = 20000 # number of Monte-Carlo samples for N_esc integrations
 mag_min, mag_max = -33, -13 # UV magnitude limits for integrations
 uv_bands = [(-17, -13), (-20, -17), (-33, -20)] # UV magnitude bins for split contributions
@@ -355,8 +368,9 @@ for cat in range(len(all_log_n_esc)):
     log_n_esc_err = all_log_n_esc_err[cat]
     log_uv_mag_err = all_log_uv_mag_err[cat]
     redshift_err = all_redshift_err[cat]
-    log_redshfit = np.log10(1 + redshift)
-    sigma_mag = (sigma_mag, 1.0, sigma_mag)[cat]  # Assume a different scatter for observations than what we find in Thesan-Zoom
+    log_redshift = np.log10(1 + redshift)
+    #sigma_mag = (sigma_mag, 1.1, sigma_mag)[cat]  # Assume a different scatter for observations than what we find in Thesan-Zoom
+    sigma_mag = (sigma_mag, sigma_mag, 0)[cat]  # Assume the same scatter for observations and Thesan-Zoom for better comparison
 
     subset_indices = range(len(log_n_esc))
     # subset_indices = np.where(log_uv_mag < -0)[0]
@@ -365,12 +379,11 @@ for cat in range(len(all_log_n_esc)):
         x_err_sym = log_uv_mag_err
         x_err_median = np.nanmedian(x_err_sym[x_err_sym > 0]) * 1e-6
         x_err_sym[x_err_sym <= 0] = x_err_median
-        # z_err_sym = redshift_err
         z_err_sym = redshift_err / (np.log(10) * (1+redshift)) 
         z_err_median = np.nanmedian(z_err_sym[z_err_sym > 0]) * 1e-6
         z_err_sym[z_err_sym <= 0] = z_err_median
         model = odr.Model(linear_2var)
-        data = odr.RealData((log_uv_mag[subset_indices], log_redshfit[subset_indices]), log_n_esc[subset_indices],
+        data = odr.RealData((log_uv_mag[subset_indices], log_redshift[subset_indices]), log_n_esc[subset_indices],
                             sx=(x_err_sym[subset_indices], z_err_sym[subset_indices]), sy=pred_mae[subset_indices])
         odr_inst = odr.ODR(data, model, beta0=[0, 0, 0])
         out = odr_inst.run()
@@ -380,10 +393,10 @@ for cat in range(len(all_log_n_esc)):
     
     else:
         # calculates the best fit parameters for UV magnitude using WLSR
-        popt, pcov = curve_fit(curve_fit_func, (log_uv_mag[subset_indices], log_redshfit[subset_indices]), log_n_esc[subset_indices])
+        popt, pcov = curve_fit(curve_fit_func, (log_uv_mag[subset_indices], log_redshift[subset_indices]), log_n_esc[subset_indices])
         a, b, c = popt
         a_err, b_err, c_err = np.sqrt(np.diag(pcov))
-
+    
     a_str, a_err_str = round_to_error(a, a_err)
     b_str, b_err_str = round_to_error(b, b_err)
     c_str, c_err_str = round_to_error(c, c_err)
@@ -425,10 +438,11 @@ for cat in range(len(all_log_n_esc)):
             for i in range(n_mc):
                 a_s, b_s, c_s = betas[i]
                 n_ion_esc_func = n_ion_esc_linear_2var(z, a_s, b_s, c_s)
-                # uv_lum_function = schechter_uv(alpha_samples[i], phi_samples[i], mag_samples[i])
-                uv_lum_function = schechter_uv_convolved(mag_min, mag_max, sigma_mag,
-                                                         alpha_samples[i], phi_samples[i], mag_samples[i], n_bins=n_bins)
-                integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag)
+                uv_lum_function = schechter_uv(alpha_samples[i], phi_samples[i], mag_samples[i])
+                # uv_lum_function = schechter_uv_convolved(mag_min, mag_max, sigma_mag,
+                #                                         alpha_samples[i], phi_samples[i], mag_samples[i], n_bins=n_bins)
+                # We now multiply the integrand by a factor to account for the scatter instead of convolving the UVLF:
+                integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag) * 10**(0.5 * np.log(10) * sigma_mag**2)
                 # N_samples[i], _ = quad(integrand, mag_min, mag_max)
                 # N_samples[i], _ = fixed_quad(integrand, mag_min, mag_max, n=1000)
                 mags = np.linspace(mag_min, mag_max, n_bins)
@@ -505,10 +519,11 @@ for cat in range(len(all_log_n_esc)):
                 for i in range(n_mc):
                     a_s, b_s, c_s = betas[i]
                     n_ion_esc_func = n_ion_esc_linear_2var(z, a_s, b_s, c_s)
-                    # uv_lum_function = dpl_uv(alpha_samples[i], beta_samples[i], phi_samples[i], mag_samples[i])
-                    uv_lum_function = dpl_uv_convolved(mag_min, mag_max, sigma_mag, 
-                                                    alpha_samples[i], beta_samples[i], phi_samples[i], mag_samples[i], n_bins=n_bins)
-                    integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag)
+                    uv_lum_function = dpl_uv(alpha_samples[i], beta_samples[i], phi_samples[i], mag_samples[i])
+                    # uv_lum_function = dpl_uv_convolved(mag_min, mag_max, sigma_mag, 
+                    #                                 alpha_samples[i], beta_samples[i], phi_samples[i], mag_samples[i], n_bins=n_bins)
+                    # integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag)
+                    integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag) * 10**(0.5 * np.log(10) * sigma_mag**2)
                     # N_samples[i], _ = quad(integrand, mag_min, mag_max)
                     # N_samples[i], _ = fixed_quad(integrand, mag_min, mag_max, n=1000)
                     mags = np.linspace(mag_min, mag_max, n_bins)
@@ -595,10 +610,11 @@ for cat in range(len(all_log_n_esc)):
             sch_uv_N_escs = []
             for z in sch_uv_redshifts:
                 n_ion_esc_func = n_ion_esc_linear_2var(z, a, b, c)
-                # uv_lum_function = schechter_uv(sch_uv_alpha_fit[z], sch_uv_phi_fit[z], sch_uv_mag_fit[z])
-                uv_lum_function = schechter_uv_convolved(mag_min, mag_max, sigma_mag,
-                                                         sch_uv_alpha_fit[z], sch_uv_phi_fit[z], sch_uv_mag_fit[z])
-                integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag)
+                uv_lum_function = schechter_uv(sch_uv_alpha_fit[z], sch_uv_phi_fit[z], sch_uv_mag_fit[z])
+                # uv_lum_function = schechter_uv_convolved(mag_min, mag_max, sigma_mag,
+                #                                          sch_uv_alpha_fit[z], sch_uv_phi_fit[z], sch_uv_mag_fit[z])
+                # integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag)
+                integrand = lambda mag: n_ion_esc_func(mag) * uv_lum_function(mag) * 10**(0.5 * np.log(10) * sigma_mag**2)
                 mags = np.linspace(band[0], band[1], n_bins)
                 result = np.trapz(integrand(mags), mags)
                 sch_uv_N_escs.append(result)
@@ -664,8 +680,8 @@ def integrand_log_mass(log_mass, z, a, b, c, m_alpha_fit, log_m_phi_fit, log_m_m
 
 if include_stellar_mass:
 
-    sigma_mass = [0.865, 0.858][dusty] # standard deviation of stellar mass and n_esc residuals
-    #sigma_mass = [0.427, 0.439][dusty]  # standard deviation of stellar mass and n_esc residuals reversed
+    sigma_mass = 0.770 # standard deviation of stellar mass and n_esc residuals
+    #sigma_mass = 0.423  # standard deviation of stellar mass and n_esc residuals reversed
     n_bins = 2000 # number of bins for stellar mass convolution
     n_mc = 2000 # number of Monte-Carlo samples for N_esc integrations
     log_mass_min, log_mass_max = 6, 12 # logarithmic stellar mass limits for integrations
@@ -776,25 +792,25 @@ if include_stellar_mass:
             all_log_m_err_low.append(log_m_err_low)
             all_log_m_err_high.append(log_m_err_high)
 
-        # integrates over the number density of galaxies multiplied by n_esc for different mass bands
+        # # integrates over the number density of galaxies multiplied by n_esc for different mass bands
         # else:
         #     split_m_N_escs = []
         #     for band in m_bands:
         #         m_N_escs = []
         #         for z in m_redshifts:
         #             n_ion_esc_func = n_ion_esc_linear_2var(z, a, b, c)
-        #             # mass_function = schechter_mass(m_alpha_fit[z], log_m_phi_fit[z], log_m_mass_fit[z])
-        #             mass_function = schechter_mass_convolved(log_mass_min, log_mass_max, sigma_mass,
-        #                                                         m_alpha_fit[z], log_m_phi_fit[z], log_m_mass_fit[z],
-        #                                                         log_space=True, n_bins=n_bins)
-        #             integrand = lambda mass: n_ion_esc_func(mass) * mass_function(mass)
+        #             mass_function = schechter_mass(m_alpha_fit[z], log_m_phi_fit[z], log_m_mass_fit[z])
+        #             # mass_function = schechter_mass_convolved(log_mass_min, log_mass_max, sigma_mass,
+        #             #                                             m_alpha_fit[z], log_m_phi_fit[z], log_m_mass_fit[z],
+        #             #                                             log_space=True, n_bins=n_bins)
+        #             # integrand = lambda mass: n_ion_esc_func(mass) * mass_function(mass)
+        #             integrand = lambda mass: n_ion_esc_func(mass) * mass_function(mass) * 10**(0.5 * np.log(10) * sigma_mass**2)
         #             masses = np.linspace(band[0], band[1], n_bins)
         #             result = np.trapz(integrand(masses), masses)
         #             m_N_escs.append(result)
         #         m_N_escs = np.array(m_N_escs)
         #         split_m_N_escs.append(m_N_escs)
         #     all_split_m_N_escs.append(split_m_N_escs)
-
 
 
 if not split_contribution:
@@ -832,11 +848,11 @@ if not split_contribution:
                     color='grey', alpha=0.2, zorder=1, label='Madau+1999')
     
     constraint_colours = {
-    "becker":  "#FFA54C",
-    "kuhlen": "#FF7A30",
-    "davies": "#FF4C1A",
-    "gaikwad": "#E22A10",
-    "rinaldi": "#B21807",
+        "davies":  "#FF9E66",  # clearly orange-red
+        "becker":  "#FF7043",  # strong orange-red
+        "kuhlen":  "#F4511E",  # red-orange
+        "rinaldi": "#D32F2F",  # true red
+        "gaikwad": "#7F0000",  # very dark red
     }
 
     # plot observational constraints on N_ion from Kuhlen (2012)
@@ -909,27 +925,27 @@ if not split_contribution:
                     color=constraint_colours["gaikwad"], alpha=0.5, zorder=2, label='Gaikwad+2023')
     
     # plot observational constraints on N_ion from Davies (2024)
-    # constraints_folder = 'other_paper_graphs/'
-    # davies_2024 = np.zeros((5, 4))
-    # davies_2024_files = ['davies_2024_Nion_values.csv',
-    #                      'davies_2024_Nion_errors_low.csv',
-    #                      'davies_2024_Nion_errors_high.csv']
-    # for i in range(len(davies_2024_files)):
-    #     with open(constraints_folder + davies_2024_files[i], newline='', encoding='utf-8') as f:
-    #         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
-    #         rows = [row for row in reader]
-    #         if i == 0:
-    #             davies_2024[:,0] = np.array([row[0] for row in rows]).astype('float64')
-    #             davies_2024[:,1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
-    #         else:
-    #             davies_2024[:,i+1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
+    constraints_folder = 'other_paper_graphs/'
+    davies_2024 = np.zeros((5, 4))
+    davies_2024_files = ['davies_2024_Nion_values.csv',
+                         'davies_2024_Nion_errors_low.csv',
+                         'davies_2024_Nion_errors_high.csv']
+    for i in range(len(davies_2024_files)):
+        with open(constraints_folder + davies_2024_files[i], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            rows = [row for row in reader]
+            if i == 0:
+                davies_2024[:,0] = np.array([row[0] for row in rows]).astype('float64')
+                davies_2024[:,1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
+            else:
+                davies_2024[:,i+1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
     # ax.errorbar(davies_2024[:,0], davies_2024[:,1],
     #             yerr=(davies_2024[:,1] - davies_2024[:,2], davies_2024[:,3] - davies_2024[:,1]),
     #             fmt='o', c='black', elinewidth=2, capsize=5, zorder=3)
     # ax.scatter(davies_2024[:,0], davies_2024[:,1], s=50, marker='*', c='black', edgecolors='black',
     #            zorder=4, label='Davies et al. (2024)')
-    # ax.fill_between(davies_2024[:,0], davies_2024[:,2], davies_2024[:,3],
-    #                 color=constraint_colours["davies"], alpha=0.5, zorder=2, label='Davies+2024')
+    ax.fill_between(davies_2024[:,0], davies_2024[:,2], davies_2024[:,3],
+                    color=constraint_colours["davies"], alpha=0.5, zorder=2, label='Davies+2024')
     
     # plot obsrevational constraints on N_ion from Rinaldi (2024)
     rinaldi_2024_z = [7, 8]
@@ -1008,8 +1024,8 @@ if not split_contribution:
             pickle.dump(all_sch_spline_low[1], f)
         # ax.plot(z_space, all_sch_spline[1](z_space), alpha = 0.8, linestyle='-', c='black', linewidth=2,
         #         zorder=3, label='UV $\dot{n}_\mathrm{ion}$ Spline Fit')
-        # with open(f"final_graph_generation/splines/observational_uv_N_ion_spline_sch_{str(sigma_mag)}.pkl", "wb") as f:
-        #     pickle.dump(all_sch_spline[1], f)
+        with open(f"final_graph_generation/splines/observational_uv_N_ion_spline_sch_{str(sigma_mag)}.pkl", "wb") as f:
+            pickle.dump(all_sch_spline[1], f)
         observational_emissivity_data = np.column_stack((sch_uv_redshifts, all_log_sch_uv_N_escs[1], all_log_sch_uv_err_low[1], all_log_sch_uv_err_high[1]))
         np.savetxt(f'final_graph_generation/emissivities/observational_N_ion.csv', observational_emissivity_data)
         with open(f"final_graph_generation/splines/observational_N_ion.pkl", "wb") as f:
@@ -1052,7 +1068,17 @@ if not split_contribution:
         ax.scatter(sch_uv_redshifts, all_log_sch_uv_N_escs[2], s=150, c='mediumvioletred', edgecolors='black', zorder=5,
             label='$f_\mathrm{esc}$ = 10%')
         with open(f"final_graph_generation/splines/f_esc_const_N_ion_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.pkl", "wb") as f:
-            pickle.dump(all_sch_spline[2], f)   
+            pickle.dump(all_sch_spline[2], f)
+
+    if prod_and_esc:
+        ax.errorbar(sch_uv_redshifts, all_log_sch_uv_N_escs[2], yerr=(all_log_sch_uv_err_low[2], all_log_sch_uv_err_high[2]),
+            fmt='none', c='mediumvioletred', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
+        ax.plot(sch_uv_redshifts, all_log_sch_uv_N_escs[2], linestyle='--', c='mediumvioletred', linewidth=2.5, alpha=0.8, zorder=2)
+        ax.scatter(sch_uv_redshifts, all_log_sch_uv_N_escs[2], s=150, c='mediumvioletred', edgecolors='black', zorder=5,
+            label=r'$\textsc{thesan-zoom}$-based, $N_\mathrm{ion} \cdot f_\mathrm{esc}$')
+        total_prod_data = np.column_stack((sch_uv_redshifts, all_log_sch_uv_N_escs[2], all_log_sch_uv_err_low[2], all_log_sch_uv_err_high[2]))
+        np.savetxt(f'final_graph_generation/emissivities/thesan_N_ion_prod_magmin_{abs(mag_min)}_magmax_{abs(mag_max)}.csv', total_prod_data)
+
 
     ax.set_xlabel("$z$")
     ax.set_ylabel("$\mathrm{log}_{10}(\dot{n}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")

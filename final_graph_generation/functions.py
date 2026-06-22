@@ -123,11 +123,11 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
     """
 
     gal_str = '' # '' for virial radius, '_gal' for galactic radius
+    dust_str = ['', '_fdust_40'][dusty] # adds the string for dusty or non-dusty to the variable names
     # loads both the catalogue of galaxies and their variables
     with h5py.File(file, 'r') as hdf:
-
-        f_esc = np.array(hdf['f_esc_vir_full'])
-        n_esc = np.array(hdf['Ndot_LyC_gal_full'])
+        f_esc = np.array(hdf[f'f_esc{dust_str}_vir_full'])
+        n_esc = np.array(hdf[f'Ndot_LyC{dust_str}_vir_full'])
         resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
         redshift = np.array(hdf['redshift_full'])
         star_mass = np.array(hdf[f'stellar_mass{gal_str}_full'])
@@ -149,13 +149,8 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         uv_size = np.array(hdf['uv_size_obs_full'])
         ha_size = np.array(hdf['ha_size_obs_full'])
         sfr10_density = sfr10 / (np.pi * sfr_size**2)
-
-        if dusty:
-            uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_fdust_40_full'])
-            uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_fdust_40_full'])
-        else:
-            uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}_full'])
-            uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}_full'])
+        uv_int_lum = np.array(hdf[f'uv_lum_int{gal_str}{dust_str}_full'])
+        uv_obs_lum = np.array(hdf[f'uv_lum_obs{gal_str}{dust_str}_full'])
 
         # # RHD variables
         # ha_lum = np.array(hdf['ha_lum_obs_full'])

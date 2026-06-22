@@ -50,7 +50,7 @@ for m_i in range(len(model_strs)):
     with open(files[m_i], 'r') as json_data:
         data = json.load(json_data)
         keys = np.array(data['keys'])
-    importances = np.array(data['importances'])
+    importances = np.array(data['mean_importances'])
     std_importances = np.array(data['std_importances'])
 
     ax.tick_params(axis='x', which='both', bottom=False, top=False)

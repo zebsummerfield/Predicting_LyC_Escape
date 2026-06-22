@@ -1,20 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
-import joblib
-import json
-from sklearn.metrics import mean_absolute_error
-from functions import *
-from scipy.optimize import curve_fit
-from scipy.integrate import quad, fixed_quad
 import numpy as np
-from astropy.io import fits
-from scipy import odr
 import csv
 from matplotlib.ticker import MaxNLocator
-from scipy.interpolate import UnivariateSpline, interp1d
-from scipy.signal import fftconvolve
-import pickle
 
 # True to include observational constraints in N_ion plot
 include_constraints = True
@@ -80,11 +69,11 @@ ax.fill_between(z_space, np.log10(critical(z_space, 1)), np.log10(critical(z_spa
 
 if include_constraints:
     constraint_colours = {
-    "becker":  "#FFA54C",
-    "kuhlen": "#FF7A30",
-    "davies": "#FF4C1A",
-    "gaikwad": "#E22A10",
-    "rinaldi": "#B21807",
+        "davies":  "#FF9E66",  # clearly orange-red
+        "becker":  "#FF7043",  # strong orange-red
+        "kuhlen":  "#F4511E",  # red-orange
+        "rinaldi": "#D32F2F",  # true red
+        "gaikwad": "#7F0000",  # very dark red
     }
 
     # plot observational constraints on N_ion from Kuhlen (2012)
@@ -154,26 +143,26 @@ if include_constraints:
                     color=constraint_colours["gaikwad"], alpha=0.4, zorder=2, label='Gaikwad+2023')
 
     # plot observational constraints on N_ion from Davies (2024)
-    # davies_2024 = np.zeros((5, 4))
-    # davies_2024_files = ['davies_2024_Nion_values.csv',
-    #                      'davies_2024_Nion_errors_low.csv',
-    #                      'davies_2024_Nion_errors_high.csv']
-    # for i in range(len(davies_2024_files)):
-    #     with open(constraints_folder + davies_2024_files[i], newline='', encoding='utf-8') as f:
-    #         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
-    #         rows = [row for row in reader]
-    #         if i == 0:
-    #             davies_2024[:,0] = np.array([row[0] for row in rows]).astype('float64')
-    #             davies_2024[:,1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
-    #         else:
-    #             davies_2024[:,i+1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
+    davies_2024 = np.zeros((5, 4))
+    davies_2024_files = ['davies_2024_Nion_values.csv',
+                         'davies_2024_Nion_errors_low.csv',
+                         'davies_2024_Nion_errors_high.csv']
+    for i in range(len(davies_2024_files)):
+        with open(constraints_folder + davies_2024_files[i], newline='', encoding='utf-8') as f:
+            reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+            rows = [row for row in reader]
+            if i == 0:
+                davies_2024[:,0] = np.array([row[0] for row in rows]).astype('float64')
+                davies_2024[:,1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
+            else:
+                davies_2024[:,i+1] = np.log10(np.array([row[1] for row in rows]).astype('float64'))
     # ax.errorbar(davies_2024[:,0], davies_2024[:,1],
     #             yerr=(davies_2024[:,1] - davies_2024[:,2], davies_2024[:,3] - davies_2024[:,1]),
     #             fmt='o', c='black', elinewidth=2, capsize=5, zorder=3)
     # ax.scatter(davies_2024[:,0], davies_2024[:,1], s=50, marker='*', c='black', edgecolors='black',
     #            zorder=4, label='Davies et al. (2024)')
-    # ax.fill_between(davies_2024[:,0], davies_2024[:,2], davies_2024[:,3],
-    #                 color=constraint_colours["davies"], alpha=0.4, zorder=2, label='Davies+2024')
+    ax.fill_between(davies_2024[:,0], davies_2024[:,2], davies_2024[:,3],
+                    color=constraint_colours["davies"], alpha=0.4, zorder=2, label='Davies+2024')
 
     # plot obsrevational constraints on N_ion from Rinaldi (2024)
     rinaldi_2024_z = [7, 8]
@@ -206,18 +195,18 @@ if include_thesan:
         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
         thesan1 = np.transpose(np.array([row for row in reader])).astype('float64')
         thesan1[1] = np.log10(thesan1[1]) + 51
-    ax.plot(thesan1[0], thesan1[1], linestyle='-', c='red', linewidth=2.5, alpha=0.6, zorder=3, label='Garaldi+22, Thesan-1')
-    with open(constraints_folder + thesan_files[1], newline='', encoding='utf-8') as f:
-        reader = csv.reader(f, delimiter=',', skipinitialspace=True)
-        thesan2 = np.transpose(np.array([row for row in reader])).astype('float64')
-        thesan2[1] = np.log10(thesan2[1]) + 51
-    ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=2.5, alpha=0.5, zorder=3, label='Garaldi+22, Thesan-2')
+    ax.plot(thesan1[0], thesan1[1], linestyle='-', c='blue', linewidth=3, alpha=0.6, zorder=3, label='Garaldi+22, Thesan-1')
+    # with open(constraints_folder + thesan_files[1], newline='', encoding='utf-8') as f:
+    #     reader = csv.reader(f, delimiter=',', skipinitialspace=True)
+    #     thesan2 = np.transpose(np.array([row for row in reader])).astype('float64')
+    #     thesan2[1] = np.log10(thesan2[1]) + 51
+    # ax.plot(thesan2[0], thesan2[1], linestyle='-', c='blue', linewidth=3, alpha=0.6, zorder=3, label='Garaldi+22, Thesan-2')
 
 if include_naidu:
     with open(constraints_folder + 'naidu_2020_Nion_values.csv', newline='', encoding='utf-8') as f:
         reader = csv.reader(f, delimiter=',', skipinitialspace=True)
         naidu_2020 = np.transpose(np.array([row for row in reader])).astype('float64')
-    ax.plot(naidu_2020[0], naidu_2020[1], linestyle='-', c='green', linewidth=2.5, alpha=0.5, zorder=3, label='Naidu+2020')        
+    ax.plot(naidu_2020[0], naidu_2020[1], linestyle='-', c='red', linewidth=3, alpha=0.6, zorder=3, label='Naidu+2020')        
 
 if vary_max or vary_min:
     for index, mag in enumerate(abs_mag_list):
@@ -234,6 +223,18 @@ if vary_max or vary_min:
         ax.scatter(redshift, log_N_ion, s=150, edgecolors='black', zorder=5, label=label)
 
 else:
+    # plot this work's observational derived Schechter UV magnitude N_esc integrations
+    observational_data = np.loadtxt(folder + "observational_N_ion.csv")
+    observational_redshift = observational_data[:,0]
+    observational_log_N_ion = observational_data[:,1]
+    observational_log_N_ion_err_low = observational_data[:,2]
+    observational_log_N_ion_err_high = observational_data[:,3]
+    ax.errorbar(observational_redshift, observational_log_N_ion, yerr=(observational_log_N_ion_err_low, observational_log_N_ion_err_high),
+                fmt='none', c='darkcyan', elinewidth=2, capsize=5, alpha=1, zorder=5)
+    ax.plot(observational_redshift, observational_log_N_ion, linestyle='--', c='darkcyan', linewidth=2.5, alpha=1, zorder=5)
+    ax.scatter(observational_redshift, observational_log_N_ion, s=150, c='darkcyan', edgecolors='black', zorder=6,
+            label='JWST-based (This Work)')
+    
     # plot this work's Thesan-Zoom derived Schechter UV magnitude N_esc integrations
     thesan_data = np.loadtxt(folder + "thesan_N_ion_magmin_33_magmax_13.csv")
     thesan_redshift = thesan_data[:,0]
@@ -246,20 +247,8 @@ else:
     ax.scatter(thesan_redshift, thesan_log_N_ion, s=150, c='darkviolet', edgecolors='black', zorder=6,
             label=(r'$\textsc{thesan-zoom}$-based (This Work)'))
 
-    # plot this work's observational derived Schechter UV magnitude N_esc integrations
-    observational_data = np.loadtxt(folder + "observational_N_ion.csv")
-    observational_redshift = observational_data[:,0]
-    observational_log_N_ion = observational_data[:,1]
-    observational_log_N_ion_err_low = observational_data[:,2]
-    observational_log_N_ion_err_high = observational_data[:,3]
-    ax.errorbar(observational_redshift, observational_log_N_ion, yerr=(observational_log_N_ion_err_low, observational_log_N_ion_err_high),
-                fmt='none', c='darkcyan', elinewidth=2, capsize=5, alpha=1, zorder=5)
-    ax.plot(observational_redshift, observational_log_N_ion, linestyle='--', c='darkcyan', linewidth=2.5, alpha=1, zorder=5)
-    ax.scatter(observational_redshift, observational_log_N_ion, s=150, c='darkcyan', edgecolors='black', zorder=6,
-            label='JWST-based (This Work)')
-
 ax.set_xlabel("$z$")
-ax.set_ylabel("$\mathrm{log}_{10}(\dot{N}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
+ax.set_ylabel("$\mathrm{log}_{10}(\dot{n}_\mathrm{ion} \; [\mathrm{s^{-1} \; cMpc^{-3}}])$")
 ax.yaxis.set_label_coords(-0.075, 0.5)
 ax.set_xlim(z_range)
 ax.set_ylim((48.9, 51.6))

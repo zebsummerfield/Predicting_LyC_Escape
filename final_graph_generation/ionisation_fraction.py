@@ -54,6 +54,7 @@ def n_H(z):
 
 def t_rec(z):
     C = 9.25 - 7.21 * np.log10(1 + z) # Madau et al. 2024
+    # C = 10
     # C = 2.9 * ((1 + z)/6)**-1.1 # Shull et al. 2012
     return 1 / ((1 + chi) * alpha_B * n_H(z) * C)
 
@@ -83,11 +84,14 @@ def tau(q_sol):
 # loads the N_ion splines and solves the ODE for ionisation fraction as a function of redshift
 if sigma_compare:
     splines = []
-    sigmas = [0.4, 0.6, 0.8, 1.0, 1.2, 1.4][::-1]
+    sigmas = [0.0, 0.2, 0.4, 0.6, 0.8, 1.0][::-1]
     for sigma in sigmas:
         with open(folder + f"observational_uv_N_ion_spline_sch_{str(sigma)}.pkl", "rb") as f:
             sigma_spline = pickle.load(f)
         splines.append(sigma_spline)
+    with open(folder + f"observational_uv_N_ion_spline_sch.pkl", "rb") as f:
+        sigma_spline = pickle.load(f)
+    splines.append(sigma_spline)
 
 elif muvmax_compare:
     splines = []
@@ -155,10 +159,13 @@ if Q_plot == True:
 
     if sigma_compare:
         colours = cmap1(np.linspace(0.2, 0.8, len(sols)))[::-1]
-        for index in range(len(sols)):
-            ax.plot(sols[index].t, sols[index].y[0], label=f'$\sigma_{{\dot{{n}}}}$ = {sigmas[index]}',
+        for index in range(len(sols) - 1):
+            if index == 2:
+                # plot the fiducial sigma = 0.725 case with a dashed line
+                ax.plot(sols[-1].t, sols[-1].y[0], label=f'$\sigma_{{\dot{{n}}}}$ = {0.725}', color='darkcyan', linestyle='--', linewidth=2)
+            ax.plot(sols[index].t, sols[index].y[0], label=f'$\sigma_{{\dot{{n}}}}$ = {sigmas[index]:.3f}',
                     linewidth=2, c=colours[index])
-            print(f"For sigma_n = {sigmas[index]}: Reionisation completes at z =",
+            print(f"For sigma_n = {sigmas[index]:.3f}: Reionisation completes at z =",
                   sols[index].t[np.where(sols[index].y[0] >= 1)[0][0]])
 
     elif muvmax_compare:
@@ -277,7 +284,7 @@ if Q_plot == True:
         ax.scatter(kageura_z, kageura_Q, marker='o', color=constraint_colours["Kageura_2025"], s=75, edgecolors='black', label='Kageura+2025', zorder=5)
 
     ax.set_ylim(0, 1)
-    ax.set_xlim(4, (16, 18)[include_f_esc_const])
+    ax.set_xlim(4, (16, 20)[include_f_esc_const])
     ax.xaxis.set_major_locator(MaxNLocator(nbins=10, integer=True))
     ax.grid(False)
     ax.set_xlabel('$z$')

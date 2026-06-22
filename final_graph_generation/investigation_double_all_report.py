@@ -15,7 +15,8 @@ obvs = False
 dusty = True
 
 folder = "final_graph_generation/"
-file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
+file = [ 'cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
+#file = 'cat_dusttestszeb_g2.hdf5'
 ratio_vars = ['sfr_full_10', 'sfr_full_100',
               'gas_mass_full', 'stellar_mass_full',
               'stellar_mass_full', 'M_vir_full',

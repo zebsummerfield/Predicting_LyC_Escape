@@ -19,7 +19,7 @@ f_or_n = 1  # 0 for f_esc, 1 for n_esc
 
 folder = "final_rf_model/"
 if dusty:
-    file = 'cat_dusttestszeb.hdf5'
+    file = 'cat_dusttestszeb_fdust.hdf5'
 else:
     file = 'cat.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, ssfr50_cut=False, add_vars=['redshift_full'])
@@ -93,24 +93,21 @@ print((
 y_residuals = y - linear_2var((a_2, b_2, c_2), (x, np.log10(1+redshift)))
 std_y = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(y_residuals[selection]**2))
 print(f"Standard deviation of residuals: {std_y}")
-# p16, p84 = np.percentile(y_residuals, [16, 84])
-# sigma_16_84 = (p84 - p16) / 2
-# print(f"16th-84th percentile range: {sigma_16_84}")
+p16, p84 = np.percentile(y_residuals, [16, 84])
+sigma_16_84 = (p84 - p16) / 2
+print(f"16th-84th percentile range: {sigma_16_84}")
 
 popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y[selection], np.log10(1+redshift[selection])), x[selection])
 a_3, b_3, c_3 = popt_3
 x_residuals = x - linear_2var((a_3, b_3, c_3), (y, np.log10(1+redshift)))
 std_x = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(x_residuals[selection]**2))
 print(f"Fit reveresd standard deviation of residuals: {std_x}")
-# p16, p84 = np.percentile(x_residuals, [16, 84])
-# sigma_16_84 = (p84 - p16) / 2
-# print(f"16th-84th percentile range: {sigma_16_84}")
 
 if not residuals:
-    ax.text((0.975, 0.025)[uv_or_mass], 0.975, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
+    ax.text((0.975, 0.025)[uv_or_mass], 0.975, r'$\sigma_{\dot{N}} = $' + f'{sigma_16_84:.3f}',
         ha=('right', 'left')[uv_or_mass], va='top', transform=ax.transAxes, fontsize=24, color=('black', 'white')[histogram])
 else:
-    ax.text((0.025, 0.975)[uv_or_mass], 0.025, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
+    ax.text((0.025, 0.975)[uv_or_mass], 0.025, r'$\sigma_{\dot{N}} = $' + f'{sigma_16_84:.3f}',
         ha=('left', 'right')[uv_or_mass], va='bottom', transform=ax.transAxes, fontsize=24, color=('black', 'white')[histogram])
 
 if residuals:

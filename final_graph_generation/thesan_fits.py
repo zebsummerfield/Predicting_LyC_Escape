@@ -16,11 +16,12 @@ dusty = True
 
 folder = "final_rf_model/"
 if dusty:
-    file = 'cat_dusttestszeb.hdf5'
+    file = 'cat_dusttestszeb_fdust.hdf5'
 else:
     file = 'cat.hdf5'
-#file = 'cat_dusttestszeb_test.hdf5'
+#file = 'cat_dusttestszeb_g2.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=1, obvs=True, dusty=dusty, eps=True, ssfr50_cut=False, add_vars=['redshift_full'])
+print(len(log_f_esc))
 print(keys)
 
 def linear_1var(p, X):
@@ -88,35 +89,37 @@ for i_1 in range(len(axes)):
         b_2_str, b_2_err_str = round_to_error(b_2, b_2_err)
         c_2_str, c_2_err_str = round_to_error(c_2, c_2_err)
         print((
-            rf'log10({["f_esc", "n_ion,esc"][i_2]}) = '
+            rf'log10({["f_esc", "N_ion,esc"][i_2]}) = '
             rf'({a_2_str}±{a_2_err_str}){["Muv", "M*"][i_1]} + '
             rf'({b_2_str}±{b_2_err_str})log10(1+z) + '
             rf'({c_2_str}±{c_2_err_str})'
         ))
 
+        if i_1 == 0 and i_2 == 1:
+            total_emissivity = np.mean(10**y[selection].astype('float64'))
+            predicted_emissivity = np.mean(10**linear_2var((a_2, b_2, c_2), (x[selection], np.log10(1+redshift[selection]))).astype('float64'))
+            print(f"Mean emissivity from data: {total_emissivity:.3e}")
+            print(f"Mean emissivity from fit: {predicted_emissivity:.3e}")
+
         y_residuals = y - linear_2var((a_2, b_2, c_2), (x, np.log10(1+redshift)))
         std_y = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(y_residuals[selection]**2))
         print(f"Standard deviation of residuals: {std_y}")
-        # p16, p84 = np.percentile(y_residuals, [16, 84])
-        # sigma_16_84 = (p84 - p16) / 2
-        # print(f"16th-84th percentile range: {sigma_16_84}")
+        p16, p84 = np.percentile(y_residuals, [16, 84])
+        sigma_16_84 = (p84 - p16) / 2
+        print(f"16th-84th percentile range: {sigma_16_84}")
 
         popt_3, pcov_3 = curve_fit(curve_fit_func_2var, (y[selection], np.log10(1+redshift[selection])), x[selection])
         a_3, b_3, c_3 = popt_3
         x_residuals = x - linear_2var((a_3, b_3, c_3), (y, np.log10(1+redshift)))
         std_x = np.sqrt((1/ (len(x[selection])- 2)) * np.sum(x_residuals[selection]**2))
         print(f"Fit reveresd standard deviation of residuals: {std_x}")
-        # p16, p84 = np.percentile(x_residuals, [16, 84])
-        # sigma_16_84 = (p84 - p16) / 2
-        # print(f"16th-84th percentile range: {sigma_16_84}")
-
 
         if i_2 == 1:
             if not residuals:
-                ax.text((0.95, 0.05)[i_1], 0.95, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
+                ax.text((0.95, 0.05)[i_1], 0.95, r'$\sigma_{\dot{N}} = $' + f'{sigma_16_84:.3f}',
                     ha=('right', 'left')[i_1], va='top', transform=ax.transAxes, fontsize=19, color=('black', 'white')[histogram])
             else:
-                ax.text((0.95, 0.905)[i_1], 0.05, r'$\sigma_{\dot{N}} = $' + f'{std_y:.3f}',
+                ax.text((0.95, 0.905)[i_1], 0.05, r'$\sigma_{\dot{N}} = $' + f'{sigma_16_84:.3f}',
                     ha=('left', 'right')[i_1], va='bottom', transform=ax.transAxes, fontsize=19, color=('black', 'white')[histogram])
 
         if residuals:

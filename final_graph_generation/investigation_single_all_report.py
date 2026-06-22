@@ -14,9 +14,8 @@ obvs = False
 dusty = True
 
 folder = "final_graph_generation/"
-file = [ 'cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-file = 'cat_dusttestszeb_mcrtesc.hdf5'
-#file = 'cat_dusttestszeb_smalltest.hdf5'
+file = [ 'cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
+#file = 'cat_dusttestszeb_g2.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False)
 f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
                 '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]

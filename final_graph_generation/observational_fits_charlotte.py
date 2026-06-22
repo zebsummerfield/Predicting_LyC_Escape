@@ -81,15 +81,15 @@ bad_ID = np.array(bad_data1['ID'].tolist() + bad_data2['ID'].tolist())
 bad_indices = np.where(np.isin(ID, bad_ID))[0].tolist()
 print(f"diffraction spike rows: {len(bad_indices)}")
 
-# removes any rows that have zero, nan, or infinity for the vars; signal to noise SN(F444W) < 3; and red_chi2(JWST) > 1
+# removes any rows that have zero, nan, or infinity for the vars; signal to noise SN(F444W) < 3; and red_chi2(JWST) > 10
 b_i = [index for index, val in enumerate(list(obvs_data['SN(F444W)'])) if val < 3]
 print(f"SN(F444W) < 3 rows: {len(b_i)}")
 bad_indices += b_i
-b_i += [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 10]
+b_i = [index for index, val in enumerate(list(obvs_data['red_chi2(JWST)'])) if val > 10]
 print(f"red_chi2(JWST) > 10 rows: {len(b_i)}")
 bad_indices += b_i
-for i in range(len(obvs_log_f_esc_vars)):
-    b_i = [index for index, val in enumerate(list((obvs_log_f_esc_vars)[i]))
+for i in range(len(obvs_log_n_esc_vars)):
+    b_i = [index for index, val in enumerate(list((obvs_log_n_esc_vars)[i]))
                     if (val == 0 or val == np.inf or val== -np.inf or np.isnan(val))]
     print(f"feature {i+1} bad rows: {len(b_i)}")
     bad_indices += b_i

@@ -17,10 +17,10 @@ dusty = True
 redshift_bins = False
 
 folder = "final_graph_generation/"
-file = ['cat.hdf5', 'cat_dusttestszeb.hdf5'][dusty]
-#file = 'cat_dusttestszeb_largetest.hdf5'
+file = ['cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
+#file = 'cat_dusttestszeb_g2.hdf5'
 keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=True, add_vars=['redshift_full'])
-
+print(len(log_f_esc))
 print(keys)
 x_index = 6  # index of M_UV in log_vars
 log_x = log_vars[x_index]
@@ -39,7 +39,7 @@ for ax_i in range(len(axes)):
     log_y = [log_f_esc, log_n_esc][ax_i]
     f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
                   '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][ax_i]
-    y_limits = ((-5, 0), (46, 54))[ax_i]
+    y_limits = ((-5, 0), (46, 55))[ax_i]
 
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
     nbins = (100, 75)[dusty]
@@ -111,7 +111,7 @@ for ax_i in range(len(axes)):
         frame.set_alpha(0.8)
 
     # axes setup
-    axes[ax_i].set_xlim(min(x_medians), -13)
+    axes[ax_i].set_xlim(-21, -13)
     axes[ax_i].set_ylim(y_limits)
     axes[ax_i].xaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
     axes[ax_i].yaxis.set_major_locator(MaxNLocator(nbins=6, integer=True))
