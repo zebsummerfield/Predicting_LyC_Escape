@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib as mpl
 import matplotlib.pyplot as plt
+import csv
 from matplotlib.ticker import MaxNLocator
 from functions import *
 
@@ -11,7 +12,7 @@ f_or_n = 0
 obvs = False
 
 # True to use the dusty Thesan-Zoom catalogue, False for dust-free catalogue
-dusty = True
+dusty = False
 
 # True to plot median lines for different redshift bins
 redshift_bins = False
@@ -37,8 +38,8 @@ fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
 for ax_i in range(len(axes)):
     log_y = [log_f_esc, log_n_esc][ax_i]
-    f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
-                  '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][ax_i]
+    f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}}) \; - \; \mathrm{0\% \, dust}$',
+                  '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}]) \; - \; \mathrm{0\% \, dust}$'][ax_i]
     y_limits = ((-5, 0), (46, 55))[ax_i]
 
     # plots a 2d histogram of log_x against log_y where the number of galaxies in a bin dictates it's colour
@@ -67,8 +68,18 @@ for ax_i in range(len(axes)):
 
     # plots the median of log_x against the median of log_y for each bin as well as the 1 sigma range
     if not redshift_bins:
-        axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
+        median_plot = axes[ax_i].plot(x_medians, y_medians, c='r', linewidth=3, alpha=0.8, label="median $f_{esc}$", zorder=4)
     axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="P16 -- P84", zorder=4)
+
+    # saves the median data for z8 glaxies in z8 runs and overplots them in future runs
+    if len(z) < 10000:
+        z8_data = np.array([x_medians, y_medians, y_16th, y_84th])
+        np.savetxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv',
+                   z8_data, fmt='%.5f', delimiter=',')
+    z8_data = np.loadtxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv', delimiter=',')
+    z8_median_plot = axes[ax_i].plot(z8_data[0], z8_data[1], c='b', linewidth=3, alpha=0.8, label="median $f_{esc}$ (zoom - 8)", zorder=4)
+    axes[ax_i].fill_between(z8_data[0], z8_data[2], z8_data[3], color='b', alpha=0.2, label="P16 -- P84 z8", zorder=4)
+    axes[ax_i].legend(handles=[median_plot[0], z8_median_plot[0]], fontsize=12, loc='lower left', frameon=False)
 
     # calculates the correlation coefficient and mean 1-sigma range
     selected_galaxies = np.where(log_x < -13)[0]

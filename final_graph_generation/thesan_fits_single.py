@@ -126,29 +126,34 @@ if residuals:
         hist = hist.T
         # hist = np.ma.masked_where(hist == 0, hist)
         hist = np.log10(hist)
-        hist[hist == -np.inf] = 0
+        # hist[hist == -np.inf] = 0
+        hist[hist < np.log10(10)] = 0
         h_plot = ax.imshow(hist, extent=[xedges[0], xedges[-1], yedges[0], yedges[-1]],
                         origin='lower', aspect='auto', cmap='viridis', interpolation='nearest', zorder=1)
     
     # adds a horizontal line at y=0
     fit = ax.axhline(0, c='teal', alpha=0.8, zorder=4)
 
-    # seperates the galaxies into bins of x with each containing equal numbers of galaxies
+    # separates the galaxies into bins of x and calculates the median of x in each bin
     nbins = 20
-    bins = np.quantile(x, np.linspace(0, 1, nbins + 1))
-    bin_indices = np.digitize(x, bins)
-    x_medians, y_medians, = ([], [])
-    y_16th, y_84th = ([], [])
-    for i in range(1, len(bins)):
-        bin_mask = bin_indices == i
-        x_medians.append(np.median(x[bin_mask]))
-        y_medians.append(np.median(y[bin_mask]))
-        redshift_medians = np.median(redshift[bin_mask])
-        y_16th.append(np.percentile(y[bin_mask], 16))
-        y_84th.append(np.percentile(y[bin_mask], 84))
-        std_yi = np.sqrt((1/ (len(x[bin_mask])- 2)) * np.sum(y_residuals[bin_mask]**2))
-        print(x_medians[i-1], std_yi)
-        log_redshift_medians = np.log10(1 + redshift_medians)
+    x_medians, y_medians, redshift_medians = ([], [], [])
+    y_16th, y_84th, x_iqr, redshift_iqr = ([], [], [], [])
+    gal_bins = np.quantile(x, np.linspace(0, 1, nbins+1))
+    gal_bin_indices = np.digitize(x, gal_bins)
+    space_bins = np.linspace(x_range[0], x_range[1], nbins+1)
+    space_bin_indices = np.digitize(x, space_bins)
+    for i in range(1, nbins+1):
+        gal_bin_mask = gal_bin_indices == i
+        space_bin_mask = space_bin_indices == i
+        x_medians.append(np.median(x[space_bin_mask]))
+        y_medians.append(np.median(y[space_bin_mask]))
+        redshift_medians.append(np.median(redshift[space_bin_mask]))
+        x_iqr.append(np.median(x[gal_bin_mask]))
+        redshift_iqr.append(np.median(redshift[gal_bin_mask]))
+        y_16th.append(np.percentile(y[gal_bin_mask], 16))
+        y_84th.append(np.percentile(y[gal_bin_mask], 84))
+    log_redshift_medians = np.log10(1 + np.array(redshift_medians))
+    log_redshift_iqr = np.log10(1 + np.array(redshift_iqr))
     print(x_medians)
     print((np.array(y_84th) - np.array(y_16th))/2)
 
@@ -162,8 +167,8 @@ if residuals:
     # plots the median of x against the median of residuals for each bin
     ax.plot(x_medians, np.array(y_medians) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)), 
             c='r', linewidth=3, alpha=0.8, label="median residual", zorder=4)
-    ax.fill_between(x_medians, np.array(y_16th) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)),
-                    np.array(y_84th) - linear_2var((a_2, b_2, c_2), (np.array(x_medians), log_redshift_medians)),
+    ax.fill_between(x_iqr, np.array(y_16th) - linear_2var((a_2, b_2, c_2), (np.array(x_iqr), log_redshift_iqr)),
+                    np.array(y_84th) - linear_2var((a_2, b_2, c_2), (np.array(x_iqr), log_redshift_iqr)),
                     color='r', alpha=0.2, label="16th-84th percentile", zorder=4)
     ax.set_ylabel(f_or_n_str + " Residuals", labelpad=10)
     ax.set_ylim((-3, 3))

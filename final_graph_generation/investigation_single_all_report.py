@@ -5,7 +5,7 @@ from matplotlib.ticker import MaxNLocator
 from functions import *
 
 # 0 for f_esc, 1 for n_esc
-f_or_n = 1
+f_or_n = 0
 
 # True if model is generated to predict for an observational catalogue 
 obvs = False
@@ -16,7 +16,7 @@ dusty = True
 folder = "final_graph_generation/"
 file = [ 'cat.hdf5', 'cat_dusttestszeb_fdust.hdf5'][dusty]
 #file = 'cat_dusttestszeb_g2.hdf5'
-keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=dusty, eps=False)
+keys, log_vars, log_f_esc, log_n_esc = prepare_data(file, f_or_n=f_or_n, obvs=obvs, dusty=False, eps=False)
 f_or_n_str = ['$\mathrm{log}_{10}(f_{\mathrm{esc}})$',
                 '$\mathrm{log}_{10}(\dot{N}_{\mathrm{ion,esc}} \; [\mathrm{s^{-1}}])$'][f_or_n]
 y_limits = ((-5.5, 0), (45, 54))[f_or_n]

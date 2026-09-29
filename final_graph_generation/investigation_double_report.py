@@ -27,6 +27,8 @@ gas_mass = gas_mass / 1.989e33
 y = np.log10(gas_mass)
 x_str = '$\mathrm{log}_{10}(M_{*} \; [\mathrm{M}_\odot])$'
 y_str = '$\mathrm{log}_{10}(M_\mathrm{gas} \; [\mathrm{M}_\odot])$'
+#y_str = '$\mathrm{log}_{10}(\mathrm{SFR}_{100} \; [\mathrm{M}_\odot \mathrm{yr}^{-1}])$'
+y = log_vars[6]
 
 plt.style.use('./MNRAS_Style.mplstyle')
 mpl.rcParams.update({'font.size': 17})

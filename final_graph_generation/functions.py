@@ -118,6 +118,8 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         True if using the dusty Thesan-Zoom catalogue
     eps: bool
         True if the variables should be adjusted to avoid log(0) errors
+    ssfr50_cut: bool
+        True if galaxies with no recent star formation should be removed from the training data
     add_vars: list
         A list of additional variables to add to the training data
     """
@@ -126,6 +128,7 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
     dust_str = ['', '_fdust_40'][dusty] # adds the string for dusty or non-dusty to the variable names
     # loads both the catalogue of galaxies and their variables
     with h5py.File(file, 'r') as hdf:
+        run_id = np.array([run.decode('utf-8') for run in hdf['run_full']])
         f_esc = np.array(hdf[f'f_esc{dust_str}_vir_full'])
         n_esc = np.array(hdf[f'Ndot_LyC{dust_str}_vir_full'])
         resolution = np.array([zoom.decode('utf-8') for zoom in hdf['zoomlevel_full']])
@@ -281,7 +284,11 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
                             if (val == 0 or val == 1 or val == np.inf or val== -np.inf)]
             print(f"feature {i+1} bad rows: {len(b_i)}")
             bad_indices += b_i
-        b_i = [index for index, zoom in enumerate(hdf['zoomlevel_full']) if zoom.decode('utf-8') != 'z4']
+        # max_z8_star_mass = max(star_mass[resolution == 'z8'])
+        # b_i = [index for index, mass in enumerate(star_mass) if mass > max_z8_star_mass]
+        # print(f"star mass bigger than z8 rows: {len(b_i)}")
+        # bad_indices += b_i
+        b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z8']
         print(f"zoom level bad rows: {len(b_i)}")
         bad_indices += b_i
         bad_indices = list(set(bad_indices))[::-1]
@@ -291,6 +298,7 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
                                     np.delete(ssfr50, bad_indices),
                                     np.delete(ssfr100, bad_indices))
         resolution = np.delete(resolution, bad_indices)
+        import pdb; pdb.set_trace()
             
         print(f'rows remaining: {len(f_esc)}')
         log_f_esc = np.log10(f_esc).astype('float32')
