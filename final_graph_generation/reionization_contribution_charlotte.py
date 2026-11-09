@@ -20,10 +20,10 @@ import pickle
 split_contribution = False
 
 # Do integrations with double power law UV luminosity functions
-include_dpl = False
+include_dpl = True
 
 # Do integrations with stellar mass functions
-include_stellar_mass = False
+include_stellar_mass = True
 
 # Whether to use the random forest models trained with the dusty or dust-free Thesan-Zoom data
 dusty = True
@@ -1037,7 +1037,7 @@ if not split_contribution:
                     fmt='none', c='mediumblue', elinewidth=2, capsize=5, alpha=0.8, zorder=4)
         ax.plot(dpl_uv_redshifts, all_log_dpl_uv_N_escs[0], linestyle='--', c='mediumblue', linewidth=2.5, alpha=0.8, zorder=2)
         ax.scatter(dpl_uv_redshifts, all_log_dpl_uv_N_escs[0], s=150, c='mediumblue', edgecolors='black', zorder=5,
-                label='DPL Luminoisty Functions')
+                label='DPL Luminosity Functions')
 
         # # plot this work's observational derived DPL UV magnitude N_esc integrations
         # ax.errorbar(dpl_uv_redshifts, all_log_dpl_uv_N_escs[1], yerr=(all_log_dpl_uv_err_low[1], all_log_dpl_uv_err_high[1]),

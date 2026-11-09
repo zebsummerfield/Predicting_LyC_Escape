@@ -102,7 +102,7 @@ def configure_plots():
     # figure settings
     rcParams['figure.figsize'] = 5, 4
 
-def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, eps=True, ssfr50_cut=True, add_vars=[]):
+def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, eps=True, ssfr50_cut=True, zoom='z4',add_vars=[]):
     """
     Loads the data from the training catalogue and prepares it for model training
 
@@ -120,6 +120,8 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         True if the variables should be adjusted to avoid log(0) errors
     ssfr50_cut: bool
         True if galaxies with no recent star formation should be removed from the training data
+    zoom: str
+        The simulation zoom resolution of the galaxies to selected ('z4', 'z8' or 'z16')
     add_vars: list
         A list of additional variables to add to the training data
     """
@@ -288,7 +290,7 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
         # b_i = [index for index, mass in enumerate(star_mass) if mass > max_z8_star_mass]
         # print(f"star mass bigger than z8 rows: {len(b_i)}")
         # bad_indices += b_i
-        b_i = [index for index, zoom in enumerate(resolution) if zoom != 'z8']
+        b_i = [index for index, res in enumerate(resolution) if res != zoom]
         print(f"zoom level bad rows: {len(b_i)}")
         bad_indices += b_i
         bad_indices = list(set(bad_indices))[::-1]
@@ -298,7 +300,6 @@ def prepare_data(file, f_or_n=0, obvs=False, obvs_cat='charlotte', dusty=False, 
                                     np.delete(ssfr50, bad_indices),
                                     np.delete(ssfr100, bad_indices))
         resolution = np.delete(resolution, bad_indices)
-        import pdb; pdb.set_trace()
             
         print(f'rows remaining: {len(f_esc)}')
         log_f_esc = np.log10(f_esc).astype('float32')

@@ -72,14 +72,14 @@ for ax_i in range(len(axes)):
     axes[ax_i].fill_between(x_medians, y_16th, y_84th, color='r', alpha=0.2, label="P16 -- P84", zorder=4)
 
     # saves the median data for z8 glaxies in z8 runs and overplots them in future runs
-    if len(z) < 10000:
-        z8_data = np.array([x_medians, y_medians, y_16th, y_84th])
-        np.savetxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv',
-                   z8_data, fmt='%.5f', delimiter=',')
-    z8_data = np.loadtxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv', delimiter=',')
-    z8_median_plot = axes[ax_i].plot(z8_data[0], z8_data[1], c='b', linewidth=3, alpha=0.8, label="median $f_{esc}$ (zoom - 8)", zorder=4)
-    axes[ax_i].fill_between(z8_data[0], z8_data[2], z8_data[3], color='b', alpha=0.2, label="P16 -- P84 z8", zorder=4)
-    axes[ax_i].legend(handles=[median_plot[0], z8_median_plot[0]], fontsize=12, loc='lower left', frameon=False)
+    # if len(z) < 10000:
+    #     z8_data = np.array([x_medians, y_medians, y_16th, y_84th])
+    #     np.savetxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv',
+    #                z8_data, fmt='%.5f', delimiter=',')
+    # z8_data = np.loadtxt(f'final_graph_generation/mnras_report_graphs/z8_{["f", "n"][ax_i]}_esc.csv', delimiter=',')
+    # z8_median_plot = axes[ax_i].plot(z8_data[0], z8_data[1], c='b', linewidth=3, alpha=0.8, label="median $f_{esc}$ (zoom - 8)", zorder=4)
+    # axes[ax_i].fill_between(z8_data[0], z8_data[2], z8_data[3], color='b', alpha=0.2, label="P16 -- P84 z8", zorder=4)
+    # axes[ax_i].legend(handles=[median_plot[0], z8_median_plot[0]], fontsize=12, loc='lower left', frameon=False)
 
     # calculates the correlation coefficient and mean 1-sigma range
     selected_galaxies = np.where(log_x < -13)[0]
