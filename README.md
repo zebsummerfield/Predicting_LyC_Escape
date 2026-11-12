@@ -1,10 +1,7 @@
-We present the code attached to the Cambridge Physics Master's Project: Predicting Ionising Photon Escape During the Epoch of Reionisation. 
+# From thesan-zoom to JWST: Predicting ionizing photon escape and the rise of UV-bright reionization sources
 
-Paper Abstract Excerpt:
+This repository contains the code associated with the paper **"From thesan-zoom to JWST: Predicting ionizing photon escape and the rise of UV-bright reionization sources"**, by Summerfield et al. (2026), accepted for publication in *Monthly Notices of the Royal Astronomical Society (MNRAS)*.
 
-Understanding the sources and evolution of cosmic reionisation remains a central challenge in modern astrophysics. Developing
-reliable methods to infer key galaxy properties during the Epoch of Reionisation (EoR) is critical for addressing these questions.
-In this work we use a catalogue of more than 110,000 simulated galaxies from the Thesan-Zoom suite of cosmological radiation-
-hydrodynamic simulations to identify indirect diagnostics of Lyman continuum (LyC) photon escape fraction and LyC
-emission rate during the EoR. We then train Random Forest regression models on this catalogue, using the identified
-diagnostics as input features, to predict both these EoR properties.
+## Abstract
+
+Understanding the sources and evolution of cosmic reionization remains a central challenge in astrophysics, with the escape of ionizing Lyman-continuum (LyC) photons from early galaxies representing a major uncertainty. In this work, we use more than 35,000 galaxy realisations from the thesan-zoom cosmological radiation-hydrodynamic simulations to identify indirect diagnostics of the LyC photon escape fraction (fₑₛ꜀) and the LyC photon escape rate (Ṅᵢₒₙ,ₑₛ꜀) across the redshift range z = 3–16. We train random forest regression models using these diagnostics to predict both quantities. We present four models: two trained with the full set of simulation-derived indicators to predict fₑₛ꜀ and Ṅᵢₒₙ,ₑₛ꜀, and two restricted to observables accessible to JWST photometric surveys. We find the 10-to-100 Myr star-formation rate ratio (SFR₁₀/SFR₁₀₀) and the gas-to-stellar mass ratio (M₉ₐₛ/Mₛₜₐᵣ) to be the strongest diagnostics of fₑₛ꜀, suggesting a strong relationship between ionizing photon escape and gas clearing through bursty star formation. In contrast, rest-frame UV (1500 Å) absolute magnitude (Mᵤᵥ) dominates Ṅᵢₒₙ,ₑₛ꜀ prediction. Motivated by the strong predictive power of Mᵤᵥ, we combine observed UV luminosity functions with derived Ṅᵢₒₙ,ₑₛ꜀–Mᵤᵥ relations to construct histories of reionization. These are consistent with observational constraints, avoiding the recently reported crisis in the ionizing photon budget. Our analysis suggests that the bulk of reionization occurred rapidly after z ≈ 8, driven by UV-bright galaxies, with the Mᵤᵥ < −17 populations providing the dominant contribution.
